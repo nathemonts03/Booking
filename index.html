@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>NexStepJS · Pickleball Court Booking</title>
+<meta name="description" content="Sign in or create an account to book pickleball courts, join open play, and manage your games." />
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0F2C34" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="NexStepJS" />
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- Tailwind (play CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['"Inter"', 'sans-serif'],
+        },
+        colors: {
+          court: {
+            DEFAULT: '#0F2C34',
+            2: '#17515F',
+          },
+          ball: '#D9F000',
+          paddle: '#FF6B35',
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root {
+    --bg: #F3F1E8;
+    --bg-soft: #EAE7DA;
+    --surface: #FFFFFF;
+    --surface-2: #F7F5EE;
+    --ink: #10262B;
+    --ink-muted: #55696E;
+    --line: rgba(16, 38, 43, 0.12);
+    --court: #0F2C34;
+    --court-2: #17515F;
+    --ball: #C9DE00;
+    --ball-ink: #10262B;
+    --paddle: #E85A2A;
+    --danger: #D8452E;
+    --success: #2F9E5B;
+    --link: #17515F;
+  }
+  html.dark {
+    --bg: #081A1F;
+    --bg-soft: #0C232A;
+    --surface: #10282F;
+    --surface-2: #0C232A;
+    --ink: #EAF3EF;
+    --ink-muted: #90ACAE;
+    --line: rgba(234, 243, 239, 0.12);
+    --court: #081A1F;
+    --court-2: #123640;
+    --ball: #E4FF3D;
+    --ball-ink: #10262B;
+    --paddle: #FF7A47;
+    --danger: #FF6B57;
+    --success: #4ADE80;
+    --link: #7FE7D4;
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    transition: background-color .4s ease, color .4s ease;
+  }
+  .font-display { font-family: 'Space Grotesk', sans-serif; }
+
+  ::selection { background: var(--ball); color: var(--ball-ink); }
+
+  /* ---------- scrollbar for policy modal ---------- */
+  .thin-scroll::-webkit-scrollbar { width: 8px; }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+  .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+
+  /* ---------- floating court background ---------- */
+  .court-lines {
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+
+  @keyframes drift {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    50%  { transform: translate(14px, -22px) rotate(180deg); }
+    100% { transform: translate(0, 0) rotate(360deg); }
+  }
+  @keyframes drift-slow {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    50%  { transform: translate(-18px, 16px) rotate(-140deg); }
+    100% { transform: translate(0, 0) rotate(-280deg); }
+  }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes paddle-swing {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(6deg); }
+  }
+  @keyframes pop-in {
+    0% { opacity: 0; transform: scale(.9) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes rise-fade {
+    0% { opacity: 0; transform: translateY(16px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+  @keyframes checkmark-draw {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes ball-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes score-pulse {
+    0%, 100% { opacity: .55; }
+    50% { opacity: 1; }
+  }
+
+  .anim-drift { animation: drift 9s ease-in-out infinite; }
+  .anim-drift-slow { animation: drift-slow 13s ease-in-out infinite; }
+  .anim-bob { animation: bob 4.5s ease-in-out infinite; }
+  .anim-paddle { animation: paddle-swing 3.2s ease-in-out infinite; transform-origin: 70% 85%; }
+  .anim-spin-slow { animation: ball-spin 6s linear infinite; }
+  .anim-pulse-soft { animation: score-pulse 3.5s ease-in-out infinite; }
+  .shake-el { animation: shake .5s; }
+
+  /* card content cross-fade when switching modes */
+  .mode-fade { transition: opacity .28s ease, transform .28s ease; }
+  .mode-leaving { opacity: 0; transform: translateY(6px) scale(.99); }
+
+  /* smooth accordion for signup-only fields */
+  .accordion {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows .45s cubic-bezier(.4,0,.2,1), opacity .35s ease;
+  }
+  .accordion.open { grid-template-rows: 1fr; opacity: 1; }
+  .accordion > .accordion-inner { overflow: hidden; min-height: 0; }
+
+  /* inputs */
+  .field-input {
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    color: var(--ink);
+    transition: border-color .2s ease, box-shadow .2s ease, background-color .3s ease;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--court-2);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--court-2) 18%, transparent);
+  }
+  html.dark .field-input:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ball) 18%, transparent);
+    border-color: var(--ball);
+  }
+  .field-input.field-error { border-color: var(--danger); }
+
+  .btn-primary {
+    background: var(--court);
+    color: #F7F5EE;
+    transition: transform .15s ease, box-shadow .25s ease, background-color .3s ease, opacity .3s ease;
+    box-shadow: 0 10px 24px -10px rgba(15,44,52,.55);
+  }
+  html.dark .btn-primary { background: var(--ball); color: var(--ball-ink); box-shadow: 0 10px 26px -10px rgba(228,255,61,.35); }
+  .btn-primary:not(:disabled):hover { transform: translateY(-2px); }
+  .btn-primary:not(:disabled):active { transform: translateY(0) scale(.98); }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  .btn-ghost {
+    border: 1.5px solid var(--line);
+    color: var(--ink);
+    transition: border-color .2s ease, background-color .2s ease, transform .15s ease;
+  }
+  .btn-ghost:hover { background: var(--surface-2); transform: translateY(-1px); }
+  .btn-ghost:active { transform: translateY(0) scale(.98); }
+
+  .icon-btn { transition: transform .2s ease, background-color .2s ease; }
+  .icon-btn:hover { transform: scale(1.08); }
+  .icon-btn:active { transform: scale(.94); }
+
+  /* eye-toggle buttons are vertically centered with a transform, so their
+     hover/active states must include that translate or they'll jump position */
+  .toggle-eye.icon-btn { transform: translateY(-50%); }
+  .toggle-eye.icon-btn:hover { transform: translateY(-50%) scale(1.1); }
+  .toggle-eye.icon-btn:active { transform: translateY(-50%) scale(.92); }
+
+  .text-link { color: var(--link); }
+
+  /* custom checkbox */
+  .policy-box {
+    width: 22px; height: 22px; border-radius: 7px;
+    border: 1.8px solid var(--line);
+    background: var(--surface-2);
+    transition: border-color .2s ease, background-color .25s ease, box-shadow .25s ease;
+  }
+  .policy-box.agreed {
+    background: var(--court);
+    border-color: var(--court);
+  }
+  html.dark .policy-box.agreed { background: var(--ball); border-color: var(--ball); }
+  .policy-box svg { stroke-dasharray: 24; stroke-dashoffset: 24; }
+  .policy-box.agreed svg { animation: checkmark-draw .35s ease forwards .05s; }
+
+  /* strength meter */
+  .strength-track { background: var(--line); }
+  .strength-fill { transition: width .35s ease, background-color .35s ease; }
+
+  /* modal */
+  .modal-backdrop { background: rgba(8, 20, 23, .55); backdrop-filter: blur(3px); }
+  .modal-panel { animation: pop-in .28s cubic-bezier(.2,.9,.3,1.15); }
+
+  /* toast */
+  .toast { animation: rise-fade .3s ease; }
+
+  /* tab pill slider */
+  .tab-pill {
+    transition: transform .35s cubic-bezier(.65,0,.35,1);
+  }
+
+  /* hide number input spinners for phone */
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+
+<body class="font-body min-h-screen relative overflow-x-hidden">
+
+  <!-- ============ Decorative animated backdrop ============ -->
+  <div class="fixed inset-0 -z-10 court-lines opacity-[0.35] dark:opacity-[0.25]"></div>
+  <div class="fixed -top-10 -left-10 w-40 h-40 rounded-full anim-drift opacity-20" style="background: radial-gradient(circle at 35% 30%, var(--ball), transparent 70%);"></div>
+  <div class="fixed top-1/3 -right-16 w-56 h-56 rounded-full anim-drift-slow opacity-20" style="background: radial-gradient(circle at 40% 40%, var(--paddle), transparent 70%);"></div>
+  <div class="fixed bottom-0 left-1/4 w-44 h-44 rounded-full anim-bob opacity-10" style="background: radial-gradient(circle at 50% 50%, var(--court-2), transparent 70%);"></div>
+
+  <!-- ============ Top bar ============ -->
+  <header class="relative z-20 flex items-center justify-between px-5 sm:px-8 py-5 max-w-7xl mx-auto">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-full grid place-items-center anim-spin-slow" style="background: var(--ball);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.4"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/><circle cx="7" cy="7" r="1.05" fill="#10262B"/><circle cx="17" cy="7" r="1.05" fill="#10262B"/><circle cx="7" cy="17" r="1.05" fill="#10262B"/><circle cx="17" cy="17" r="1.05" fill="#10262B"/></svg>
+      </div>
+      <span class="font-display font-semibold text-lg tracking-tight">NexStepJS</span>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="installBtn" class="hidden btn-ghost rounded-full px-4 py-2 text-sm font-medium">Install app</button>
+      <button id="themeToggle" aria-label="Toggle dark mode" class="icon-btn w-10 h-10 rounded-full grid place-items-center border" style="border-color: var(--line);">
+        <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+        <svg id="iconMoon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 1 1 9.3 3.6a7 7 0 0 0 11.1 11.1Z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ Main layout ============ -->
+  <main class="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 pb-16 grid lg:grid-cols-2 gap-10 items-center min-h-[calc(100vh-96px)]">
+
+    <!-- ---------- Left: hero / court scene (desktop only) ---------- -->
+    <section class="hidden lg:flex flex-col justify-center relative h-[560px] rounded-[32px] overflow-hidden px-10" style="background: linear-gradient(160deg, var(--court), var(--court-2));">
+      <div class="absolute inset-0 opacity-[0.14]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 46px 46px;"></div>
+      <!-- kitchen line -->
+      <div class="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-[2px]" style="background: rgba(255,255,255,.25);"></div>
+      <div class="absolute left-1/2 top-10 bottom-10 -translate-x-1/2 w-[2px]" style="background: rgba(255,255,255,.25);"></div>
+
+      <!-- floating ball -->
+      <div class="absolute top-16 right-16 w-16 h-16 rounded-full anim-bob grid place-items-center shadow-2xl" style="background: var(--ball);">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="1.1" fill="#10262B"/><circle cx="17" cy="7" r="1.1" fill="#10262B"/><circle cx="7" cy="17" r="1.1" fill="#10262B"/><circle cx="17" cy="17" r="1.1" fill="#10262B"/><circle cx="12" cy="12" r="1.1" fill="#10262B"/><circle cx="12" cy="5" r="1.1" fill="#10262B"/><circle cx="12" cy="19" r="1.1" fill="#10262B"/><circle cx="5" cy="12" r="1.1" fill="#10262B"/><circle cx="19" cy="12" r="1.1" fill="#10262B"/></svg>
+      </div>
+
+      <!-- paddle -->
+      <div class="absolute bottom-16 right-24 anim-paddle">
+        <svg width="86" height="120" viewBox="0 0 86 120" fill="none">
+          <rect x="35" y="72" width="10" height="40" rx="4" fill="#E9DFC8"/>
+          <ellipse cx="40" cy="42" rx="38" ry="44" fill="var(--paddle)" />
+          <ellipse cx="40" cy="42" rx="38" ry="44" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3"/>
+        </svg>
+      </div>
+
+      <div class="relative anim-pulse-soft mb-3 text-white/70 text-sm font-medium tracking-wide">Court 3 · Open Play</div>
+      <h1 class="relative font-display text-white text-[2.6rem] leading-[1.08] font-semibold max-w-sm">
+        Book your next game before the kitchen fills up.
+      </h1>
+      <p class="relative mt-4 text-white/70 max-w-xs text-[15px] leading-relaxed">
+        Reserve courts, track your rating, and rally with your regular four — all from one account.
+      </p>
+
+      <div class="relative mt-10 flex items-center gap-4 text-white/80 text-sm">
+        <div class="flex -space-x-2">
+          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:#E9DFC8"></div>
+          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:var(--ball)"></div>
+          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:var(--paddle)"></div>
+        </div>
+        <span>Joined by 4,200+ players this season</span>
+      </div>
+    </section>
+
+    <!-- ---------- Right: auth card ---------- -->
+    <section class="flex justify-center lg:justify-end">
+      <div class="w-full max-w-[440px] rounded-[28px] p-7 sm:p-9 relative" style="background: var(--surface); box-shadow: 0 30px 60px -25px rgba(15,44,52,.35);">
+
+        <!-- tab pill switcher -->
+        <div class="relative grid grid-cols-2 rounded-full p-1 mb-7" style="background: var(--surface-2);">
+          <div id="tabPill" class="tab-pill absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full" style="background: var(--court);"></div>
+          <button type="button" id="tabLogin" class="relative z-10 py-2.5 rounded-full text-sm font-semibold font-display transition-colors">Log In</button>
+          <button type="button" id="tabSignup" class="relative z-10 py-2.5 rounded-full text-sm font-semibold font-display transition-colors">Sign Up</button>
+        </div>
+
+        <div id="cardContent" class="mode-fade">
+          <h2 id="formTitle" class="font-display text-2xl font-semibold mb-1">Welcome back</h2>
+          <p id="formSubtitle" class="text-sm mb-6" style="color: var(--ink-muted);">Log in to book your next court.</p>
+
+          <form id="authForm" novalidate class="space-y-4">
+
+            <!-- Full name (signup only) -->
+            <div id="rowFullName" class="accordion">
+              <div class="accordion-inner space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Full name</label>
+                <input type="text" id="fullName" autocomplete="name" placeholder="Alex Rivera"
+                  class="field-input w-full rounded-xl px-4 py-3 text-[15px]" />
+                <p class="err-msg text-xs hidden" style="color: var(--danger);">Please enter your full name.</p>
+              </div>
+            </div>
+
+            <!-- Email (shared) -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Email</label>
+              <input type="email" id="email" autocomplete="email" placeholder="you@example.com"
+                class="field-input w-full rounded-xl px-4 py-3 text-[15px]" />
+              <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter a valid email address.</p>
+            </div>
+
+            <!-- Contact number (signup only) -->
+            <div id="rowContact" class="accordion">
+              <div class="accordion-inner space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Contact number</label>
+                <div class="flex gap-2">
+                  <select id="countryCode" class="field-input rounded-xl px-2.5 py-3 text-[15px] w-[118px]">
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+1">🇨🇦 +1</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+63" selected>🇵🇭 +63</option>
+                    <option value="+65">🇸🇬 +65</option>
+                    <option value="+60">🇲🇾 +60</option>
+                    <option value="+81">🇯🇵 +81</option>
+                    <option value="+82">🇰🇷 +82</option>
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+49">🇩🇪 +49</option>
+                    <option value="+33">🇫🇷 +33</option>
+                    <option value="+34">🇪🇸 +34</option>
+                    <option value="+52">🇲🇽 +52</option>
+                  </select>
+                  <input type="tel" id="phoneNumber" inputmode="numeric" autocomplete="tel-national" placeholder="9171234567"
+                    class="field-input flex-1 min-w-0 rounded-xl px-4 py-3 text-[15px]" />
+                </div>
+                <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter a valid contact number.</p>
+              </div>
+            </div>
+
+            <!-- Password (shared) -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Password</label>
+              <div class="relative">
+                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••"
+                  class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
+                <button type="button" data-target="password" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
+                  <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+                  <svg class="eye-closed hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.7a3.2 3.2 0 0 0 4.5 4.5M7.3 7.5C4.5 9 2.8 12 2.8 12S6.3 19 12.8 19c1.7 0 3.1-.4 4.3-1.1M17.4 15.9C19.9 14.2 21.2 12 21.2 12s-1.2-2.4-3.6-4.2"/></svg>
+                </button>
+              </div>
+              <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter your password.</p>
+            </div>
+
+            <!-- Password strength + confirm (signup only) -->
+            <div id="rowPasswordSecurity" class="accordion">
+              <div class="accordion-inner space-y-4">
+
+                <div class="space-y-2 pt-1">
+                  <div class="h-1.5 w-full rounded-full strength-track overflow-hidden">
+                    <div id="strengthFill" class="strength-fill h-full w-0 rounded-full"></div>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span id="strengthLabel" class="text-xs font-medium" style="color: var(--ink-muted);">Password strength</span>
+                  </div>
+                  <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs" style="color: var(--ink-muted);">
+                    <li class="req-item flex items-center gap-1.5" data-rule="len"><span class="req-dot"></span>8+ characters</li>
+                    <li class="req-item flex items-center gap-1.5" data-rule="upper"><span class="req-dot"></span>Uppercase letter</li>
+                    <li class="req-item flex items-center gap-1.5" data-rule="lower"><span class="req-dot"></span>Lowercase letter</li>
+                    <li class="req-item flex items-center gap-1.5" data-rule="num"><span class="req-dot"></span>Number</li>
+                    <li class="req-item flex items-center gap-1.5" data-rule="sym"><span class="req-dot"></span>Symbol</li>
+                  </ul>
+                </div>
+
+                <div class="space-y-1.5">
+                  <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Confirm password</label>
+                  <div class="relative">
+                    <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••"
+                      class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
+                    <button type="button" data-target="confirmPassword" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
+                      <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
+                      <svg class="eye-closed hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.7a3.2 3.2 0 0 0 4.5 4.5M7.3 7.5C4.5 9 2.8 12 2.8 12S6.3 19 12.8 19c1.7 0 3.1-.4 4.3-1.1M17.4 15.9C19.9 14.2 21.2 12 21.2 12s-1.2-2.4-3.6-4.2"/></svg>
+                    </button>
+                  </div>
+                  <p id="matchMsg" class="text-xs hidden"></p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Remember me (login only) -->
+            <div id="rowRemember" class="accordion open">
+              <div class="accordion-inner flex items-center justify-between pt-1">
+                <label class="flex items-center gap-2.5 cursor-pointer select-none text-sm">
+                  <input type="checkbox" id="rememberMe" class="peer sr-only" />
+                  <span class="w-9 h-5 rounded-full relative transition-colors" style="background: var(--line);" id="rememberTrack">
+                    <span class="absolute top-[3px] left-[3px] w-[14px] h-[14px] rounded-full bg-white transition-transform" id="rememberDot"></span>
+                  </span>
+                  Remember me
+                </label>
+                <button type="button" id="forgotBtn" class="text-link text-sm font-semibold hover:underline">Forgot password?</button>
+              </div>
+            </div>
+
+            <!-- Privacy policy (signup only) -->
+            <div id="rowPolicy" class="accordion">
+              <div class="accordion-inner pt-1">
+                <button type="button" id="policyRow" class="w-full flex items-start gap-3 text-left group">
+                  <span id="policyBox" class="policy-box shrink-0 grid place-items-center mt-0.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
+                  </span>
+                  <span class="text-sm leading-snug" style="color: var(--ink-muted);">
+                    I've read and agree to the <span class="font-semibold underline" style="color: var(--ink);">Privacy Policy</span> and Terms of Play.
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn-primary w-full rounded-xl py-3.5 font-display font-semibold text-[15px] mt-2">
+              <span id="submitLabel">Log In</span>
+              <svg id="submitSpinner" class="hidden animate-spin inline-block ml-2" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+            </button>
+          </form>
+
+          <div class="flex items-center gap-3 my-6">
+            <div class="h-px flex-1" style="background: var(--line);"></div>
+            <span class="text-xs" style="color: var(--ink-muted);">or continue with</span>
+            <div class="h-px flex-1" style="background: var(--line);"></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="googleBtn" class="btn-ghost rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm font-medium">
+              <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.2-5.5 4.2-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.6-2.5C16.9 3.5 14.7 2.5 12 2.5 6.8 2.5 2.6 6.8 2.6 12S6.8 21.5 12 21.5c6.9 0 9.6-4.8 9.6-7.3 0-.5-.05-.9-.13-1.3H12Z"/></svg>
+              Google
+            </button>
+            <button type="button" id="appleBtn" class="btn-ghost rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm font-medium">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 1c.1 1.1-.3 2.2-1 3-.7.8-1.9 1.5-3 1.4-.1-1.1.4-2.2 1-3 .8-.8 2-1.4 3-1.4Zm3 16.4c-.5 1.2-.8 1.7-1.5 2.7-1 1.5-2.4 3.3-4.1 3.3-1.5 0-1.9-1-4-1s-2.5 1-4 1c-1.7 0-3-1.7-4-3.1C-.1 16.9-.6 11.7 2 8.6c1.3-1.6 3.1-2.5 4.7-2.5 1.6 0 2.6 1 4 1s2.1-1 4-1c1.5 0 3.1.8 4.3 2.2-3.7 2-3.1 7.3.7 9.1Z"/></svg>
+              Apple
+            </button>
+          </div>
+
+          <p class="text-center text-sm mt-7" style="color: var(--ink-muted);">
+            <span id="switchPrompt">Don't have an account?</span>
+            <button type="button" id="switchModeBtn" class="text-link font-semibold ml-1 hover:underline">Sign up</button>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ Footer ============ -->
+  <footer class="relative z-10 border-t" style="border-color: var(--line);">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-full grid place-items-center" style="background: var(--ball);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.6"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/></svg>
+        </div>
+        <span class="text-sm" style="color: var(--ink-muted);">&copy; <span id="footerYear"></span> NexStepJS. All rights reserved.</span>
+      </div>
+      <p class="text-sm" style="color: var(--ink-muted);">Developed by <span class="font-semibold" style="color: var(--ink);">NexStepJS</span></p>
+    </div>
+  </footer>
+
+  <!-- ============ Privacy Policy Modal ============ -->
+  <div id="policyModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+    <div class="modal-panel w-full max-w-lg rounded-3xl overflow-hidden flex flex-col max-h-[85vh]" style="background: var(--surface);">
+      <div class="px-6 pt-6 pb-4 border-b" style="border-color: var(--line);">
+        <h3 class="font-display text-xl font-semibold">Privacy Policy</h3>
+        <p class="text-xs mt-1" style="color: var(--ink-muted);">Scroll to the bottom to continue.</p>
+      </div>
+      <div id="policyText" class="thin-scroll px-6 py-5 overflow-y-auto text-sm leading-relaxed space-y-4" style="color: var(--ink-muted);">
+        <p><strong style="color: var(--ink);">1. What we collect.</strong> When you create a NexStepJS account we collect your full name, email address, and contact number so we can confirm bookings, send court reminders, and identify you at check-in.</p>
+        <p><strong style="color: var(--ink);">2. How we use your data.</strong> Your information is used to manage court reservations, open-play sign-ups, and league standings. We may send you booking confirmations, schedule changes, and occasional updates about club events. You can opt out of non-essential messages at any time.</p>
+        <p><strong style="color: var(--ink);">3. Payment information.</strong> If you purchase court time or memberships, payment details are processed by our payment partner and are never stored on our servers in full.</p>
+        <p><strong style="color: var(--ink);">4. Sharing.</strong> We do not sell your personal information. Limited details (such as your display name and skill rating) may be visible to other players when you join open play or a league match, so opponents and partners know who they're playing.</p>
+        <p><strong style="color: var(--ink);">5. Security.</strong> Passwords are never stored in plain text. Account access is protected through encrypted authentication, and you can enable session-based sign-in on shared devices instead of staying permanently logged in.</p>
+        <p><strong style="color: var(--ink);">6. Your choices.</strong> You may request a copy of your data, correct inaccurate details, or ask us to delete your account at any time by contacting the front desk or our support email.</p>
+        <p><strong style="color: var(--ink);">7. Cookies and local storage.</strong> We use local storage on your device to remember your theme preference and, if you choose "remember me," to keep you signed in between visits.</p>
+        <p><strong style="color: var(--ink);">8. Changes to this policy.</strong> If this policy changes, we'll update the date below and, for material changes, notify you by email before they take effect.</p>
+        <p class="pt-2" style="color: var(--ink-muted);">Last updated: this season. By creating an account you agree to the handling of your data as described above.</p>
+      </div>
+      <div class="px-6 py-4 border-t flex justify-end gap-3" style="border-color: var(--line);">
+        <button type="button" id="policyCloseBtn" class="btn-ghost rounded-full px-5 py-2 text-sm font-medium">Close</button>
+        <button type="button" id="policyAgreeBtn" class="btn-primary rounded-full px-5 py-2 text-sm font-semibold opacity-0 pointer-events-none -translate-y-1 transition-all duration-300">I agree</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Forgot Password Modal ============ -->
+  <div id="forgotModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+    <div class="modal-panel w-full max-w-sm rounded-3xl p-6" style="background: var(--surface);">
+      <h3 class="font-display text-xl font-semibold mb-1">Reset your password</h3>
+      <p class="text-sm mb-5" style="color: var(--ink-muted);">We'll email you a link to get back on the court.</p>
+      <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Email</label>
+      <input type="email" id="forgotEmail" placeholder="you@example.com" class="field-input w-full rounded-xl px-4 py-3 text-[15px] mt-1.5 mb-5" />
+      <div class="flex gap-3">
+        <button type="button" id="forgotCancelBtn" class="btn-ghost flex-1 rounded-xl py-2.5 text-sm font-medium">Cancel</button>
+        <button type="button" id="forgotSendBtn" class="btn-primary flex-1 rounded-xl py-2.5 text-sm font-semibold">Send link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Not Available Modal (Google / Apple) ============ -->
+  <div id="notAvailableModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+    <div class="modal-panel w-full max-w-sm rounded-3xl p-6 text-center" style="background: var(--surface);">
+      <div class="w-14 h-14 rounded-full mx-auto mb-4 grid place-items-center" style="background: var(--surface-2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      </div>
+      <h3 class="font-display text-lg font-semibold mb-1.5">Coming soon</h3>
+      <p id="notAvailableText" class="text-sm mb-6" style="color: var(--ink-muted);">Sign-in with Google isn't available just yet. Please use your email and password for now.</p>
+      <button type="button" id="notAvailableCloseBtn" class="btn-primary w-full rounded-xl py-2.5 text-sm font-semibold">Got it</button>
+    </div>
+  </div>
+
+  <!-- ============ Toast container ============ -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 left-5 sm:left-auto z-[60] flex flex-col gap-2.5 items-end"></div>
+
+  <script type="module">
+    // ---------------------------------------------------------------
+    // Firebase
+    // ---------------------------------------------------------------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
+    import {
+      getAuth, setPersistence, browserLocalPersistence, browserSessionPersistence,
+      createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
+      authDomain: "pickleballsystem-729d3.firebaseapp.com",
+      databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "pickleballsystem-729d3",
+      storageBucket: "pickleballsystem-729d3.firebasestorage.app",
+      messagingSenderId: "352709442404",
+      appId: "1:352709442404:web:5bb00d7a77036c55d61871",
+      measurementId: "G-QBWPK4B56G"
+    };
+
+    const footerYearEl = document.getElementById('footerYear');
+    if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+    const app = initializeApp(firebaseConfig);
+    analyticsSupported().then((ok) => { if (ok) getAnalytics(app); }).catch(() => {});
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // ---------------------------------------------------------------
+    // Theme (dark / light)
+    // ---------------------------------------------------------------
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const iconSun = document.getElementById('iconSun');
+    const iconMoon = document.getElementById('iconMoon');
+
+    function applyTheme(theme) {
+      root.classList.toggle('dark', theme === 'dark');
+      iconSun.classList.toggle('hidden', theme === 'dark');
+      iconMoon.classList.toggle('hidden', theme !== 'dark');
+      localStorage.setItem('kl-theme', theme);
+    }
+    const savedTheme = localStorage.getItem('kl-theme');
+    applyTheme(savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    themeToggle.addEventListener('click', () => {
+      applyTheme(root.classList.contains('dark') ? 'light' : 'dark');
+    });
+
+    // ---------------------------------------------------------------
+    // PWA: service worker + install prompt
+    // ---------------------------------------------------------------
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('installBtn');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.classList.remove('hidden');
+    });
+    installBtn.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      installBtn.classList.add('hidden');
+    });
+
+    // ---------------------------------------------------------------
+    // Toasts
+    // ---------------------------------------------------------------
+    function showToast(type, message) {
+      const colors = {
+        success: { bg: 'var(--success)', fg: '#fff' },
+        error: { bg: 'var(--danger)', fg: '#fff' },
+        info: { bg: 'var(--court)', fg: '#F7F5EE' },
+      };
+      const c = colors[type] || colors.info;
+      const el = document.createElement('div');
+      el.className = 'toast rounded-2xl px-4 py-3 text-sm font-medium shadow-xl max-w-xs';
+      el.style.background = c.bg;
+      el.style.color = c.fg;
+      el.textContent = message;
+      document.getElementById('toastContainer').appendChild(el);
+      setTimeout(() => {
+        el.style.transition = 'opacity .3s ease, transform .3s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(() => el.remove(), 300);
+      }, 4200);
+    }
+
+    // ---------------------------------------------------------------
+    // Mode switching (Login <-> Sign up)
+    // ---------------------------------------------------------------
+    let mode = 'login';
+    let policyAgreed = false;
+
+    const cardContent = document.getElementById('cardContent');
+    const formTitle = document.getElementById('formTitle');
+    const formSubtitle = document.getElementById('formSubtitle');
+    const submitLabel = document.getElementById('submitLabel');
+    const switchPrompt = document.getElementById('switchPrompt');
+    const switchModeBtn = document.getElementById('switchModeBtn');
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    const tabPill = document.getElementById('tabPill');
+    const submitBtn = document.getElementById('submitBtn');
+
+    const rowFullName = document.getElementById('rowFullName');
+    const rowContact = document.getElementById('rowContact');
+    const rowPasswordSecurity = document.getElementById('rowPasswordSecurity');
+    const rowPolicy = document.getElementById('rowPolicy');
+    const rowRemember = document.getElementById('rowRemember');
+
+    function paintTabs() {
+      const active = { background: 'var(--court)' };
+      tabPill.style.transform = mode === 'login' ? 'translateX(0%)' : 'translateX(100%)';
+      tabLogin.style.color = mode === 'login' ? (root.classList.contains('dark') ? 'var(--ball-ink)' : '#F7F5EE') : 'var(--ink)';
+      tabSignup.style.color = mode === 'signup' ? (root.classList.contains('dark') ? 'var(--ball-ink)' : '#F7F5EE') : 'var(--ink)';
+      tabPill.style.background = root.classList.contains('dark') ? 'var(--ball)' : 'var(--court)';
+    }
+
+    function updateSubmitState() {
+      submitBtn.disabled = mode === 'signup' && !policyAgreed;
+    }
+
+    function setMode(next, animate = true) {
+      if (next === mode) return;
+      const swap = () => {
+        mode = next;
+        const isSignup = mode === 'signup';
+        rowFullName.classList.toggle('open', isSignup);
+        rowContact.classList.toggle('open', isSignup);
+        rowPasswordSecurity.classList.toggle('open', isSignup);
+        rowPolicy.classList.toggle('open', isSignup);
+        rowRemember.classList.toggle('open', !isSignup);
+
+        formTitle.textContent = isSignup ? 'Create your account' : 'Welcome back';
+        formSubtitle.textContent = isSignup ? 'Join the club and start booking courts.' : 'Log in to book your next court.';
+        submitLabel.textContent = isSignup ? 'Create Account' : 'Log In';
+        switchPrompt.textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
+        switchModeBtn.textContent = isSignup ? 'Log in' : 'Sign up';
+
+        document.getElementById('password').autocomplete = isSignup ? 'new-password' : 'current-password';
+        clearAllErrors();
+        paintTabs();
+        updateSubmitState();
+      };
+
+      if (!animate) { swap(); return; }
+      cardContent.classList.add('mode-leaving');
+      setTimeout(() => {
+        swap();
+        cardContent.classList.remove('mode-leaving');
+      }, 180);
+    }
+
+    tabLogin.addEventListener('click', () => setMode('login'));
+    tabSignup.addEventListener('click', () => setMode('signup'));
+    switchModeBtn.addEventListener('click', () => setMode(mode === 'login' ? 'signup' : 'login'));
+    paintTabs();
+
+    // ---------------------------------------------------------------
+    // Show / hide password
+    // ---------------------------------------------------------------
+    document.querySelectorAll('.toggle-eye').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.querySelector('.eye-open').classList.toggle('hidden', show);
+        btn.querySelector('.eye-closed').classList.toggle('hidden', !show);
+        btn.setAttribute('aria-pressed', String(show));
+      });
+    });
+
+    // ---------------------------------------------------------------
+    // Password strength meter
+    // ---------------------------------------------------------------
+    const pwInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthLabel = document.getElementById('strengthLabel');
+    const matchMsg = document.getElementById('matchMsg');
+
+    function evaluatePassword(pw) {
+      const rules = {
+        len: pw.length >= 8,
+        upper: /[A-Z]/.test(pw),
+        lower: /[a-z]/.test(pw),
+        num: /[0-9]/.test(pw),
+        sym: /[^A-Za-z0-9]/.test(pw),
+      };
+      const score = Object.values(rules).filter(Boolean).length;
+      document.querySelectorAll('.req-item').forEach((li) => {
+        const ok = rules[li.dataset.rule];
+        li.style.color = ok ? 'var(--success)' : 'var(--ink-muted)';
+        const dot = li.querySelector('.req-dot');
+        dot.style.display = 'inline-block';
+        dot.style.width = '6px'; dot.style.height = '6px'; dot.style.borderRadius = '999px';
+        dot.style.background = ok ? 'var(--success)' : 'var(--line)';
+        dot.style.transition = 'background-color .25s ease';
+      });
+      const pct = pw.length === 0 ? 0 : Math.max(12, (score / 5) * 100);
+      strengthFill.style.width = pct + '%';
+      const labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong', 'Strong'];
+      const colors = ['var(--danger)', 'var(--danger)', '#E8A93B', '#E8A93B', 'var(--success)', 'var(--success)'];
+      strengthFill.style.background = pw.length === 0 ? 'var(--line)' : colors[score];
+      strengthLabel.textContent = pw.length === 0 ? 'Password strength' : labels[score];
+      return score;
+    }
+
+    function checkMatch() {
+      if (!confirmInput.value) { matchMsg.classList.add('hidden'); return true; }
+      const ok = pwInput.value === confirmInput.value;
+      matchMsg.textContent = ok ? 'Passwords match' : "Passwords don't match";
+      matchMsg.style.color = ok ? 'var(--success)' : 'var(--danger)';
+      matchMsg.classList.remove('hidden');
+      return ok;
+    }
+
+    pwInput.addEventListener('input', () => { evaluatePassword(pwInput.value); checkMatch(); });
+    confirmInput.addEventListener('input', checkMatch);
+    evaluatePassword('');
+
+    // ---------------------------------------------------------------
+    // Remember me toggle switch visuals
+    // ---------------------------------------------------------------
+    const rememberMe = document.getElementById('rememberMe');
+    const rememberTrack = document.getElementById('rememberTrack');
+    const rememberDot = document.getElementById('rememberDot');
+    rememberMe.addEventListener('change', () => {
+      rememberTrack.style.background = rememberMe.checked ? (root.classList.contains('dark') ? 'var(--ball)' : 'var(--court)') : 'var(--line)';
+      rememberDot.style.transform = rememberMe.checked ? 'translateX(16px)' : 'translateX(0)';
+    });
+
+    // ---------------------------------------------------------------
+    // Privacy policy modal
+    // ---------------------------------------------------------------
+    const policyModal = document.getElementById('policyModal');
+    const policyText = document.getElementById('policyText');
+    const policyAgreeBtn = document.getElementById('policyAgreeBtn');
+    const policyBox = document.getElementById('policyBox');
+    const policyRow = document.getElementById('policyRow');
+
+    function openModal(el) { el.classList.remove('hidden'); el.classList.add('flex'); document.body.style.overflow = 'hidden'; }
+    function closeModal(el) { el.classList.add('hidden'); el.classList.remove('flex'); document.body.style.overflow = ''; }
+
+    policyRow.addEventListener('click', () => {
+      openModal(policyModal);
+      policyAgreeBtn.classList.add('opacity-0', 'pointer-events-none', '-translate-y-1');
+      // re-check in case content already fits without scrolling
+      requestAnimationFrame(() => maybeRevealAgree());
+    });
+    document.getElementById('policyCloseBtn').addEventListener('click', () => closeModal(policyModal));
+
+    function maybeRevealAgree() {
+      const atBottom = policyText.scrollTop + policyText.clientHeight >= policyText.scrollHeight - 12;
+      if (atBottom) {
+        policyAgreeBtn.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-1');
+      }
+    }
+    policyText.addEventListener('scroll', maybeRevealAgree);
+
+    policyAgreeBtn.addEventListener('click', () => {
+      policyAgreed = true;
+      policyBox.classList.add('agreed');
+      updateSubmitState();
+      closeModal(policyModal);
+      showToast('success', 'Thanks — you\'re all set to create your account.');
+    });
+
+    // ---------------------------------------------------------------
+    // Forgot password modal
+    // ---------------------------------------------------------------
+    const forgotModal = document.getElementById('forgotModal');
+    document.getElementById('forgotBtn').addEventListener('click', () => {
+      document.getElementById('forgotEmail').value = document.getElementById('email').value || '';
+      openModal(forgotModal);
+    });
+    document.getElementById('forgotCancelBtn').addEventListener('click', () => closeModal(forgotModal));
+    document.getElementById('forgotSendBtn').addEventListener('click', async () => {
+      const email = document.getElementById('forgotEmail').value.trim();
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        showToast('error', 'Enter a valid email first.');
+        return;
+      }
+      const btn = document.getElementById('forgotSendBtn');
+      btn.disabled = true;
+      try {
+        await sendPasswordResetEmail(auth, email);
+        showToast('success', 'Reset link sent — check your inbox.');
+        closeModal(forgotModal);
+      } catch (err) {
+        console.error('Password reset failed:', err);
+        showToast('error', mapFirebaseError(err.code, err.message));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ---------------------------------------------------------------
+    // Google / Apple "not available" modal
+    // ---------------------------------------------------------------
+    const notAvailableModal = document.getElementById('notAvailableModal');
+    const notAvailableText = document.getElementById('notAvailableText');
+    document.getElementById('googleBtn').addEventListener('click', () => {
+      notAvailableText.textContent = "Sign-in with Google isn't available just yet. Please use your email and password for now.";
+      openModal(notAvailableModal);
+    });
+    document.getElementById('appleBtn').addEventListener('click', () => {
+      notAvailableText.textContent = "Sign-in with Apple isn't available just yet. Please use your email and password for now.";
+      openModal(notAvailableModal);
+    });
+    document.getElementById('notAvailableCloseBtn').addEventListener('click', () => closeModal(notAvailableModal));
+
+    // close modals on backdrop click
+    [policyModal, forgotModal, notAvailableModal].forEach((m) => {
+      m.addEventListener('click', (e) => { if (e.target === m) closeModal(m); });
+    });
+
+    // ---------------------------------------------------------------
+    // Form validation helpers
+    // ---------------------------------------------------------------
+    function setError(inputEl, show) {
+      const wrap = inputEl.closest('.space-y-1.5, .accordion-inner');
+      const msg = wrap ? wrap.querySelector('.err-msg') : null;
+      inputEl.classList.toggle('field-error', show);
+      if (msg) msg.classList.toggle('hidden', !show);
+    }
+    function clearAllErrors() {
+      document.querySelectorAll('.field-input').forEach((i) => i.classList.remove('field-error'));
+      document.querySelectorAll('.err-msg').forEach((m) => m.classList.add('hidden'));
+    }
+
+    function mapFirebaseError(code, fallbackMessage) {
+      const map = {
+        'auth/invalid-email': 'That email address looks invalid.',
+        'auth/user-not-found': 'No account found with that email.',
+        'auth/wrong-password': 'Incorrect password. Try again.',
+        'auth/invalid-credential': 'Incorrect email or password.',
+        'auth/email-already-in-use': 'An account already exists with that email.',
+        'auth/weak-password': 'Please choose a stronger password.',
+        'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
+        'auth/network-request-failed': 'Network error — check your connection.',
+        'auth/operation-not-allowed': 'Email/password sign-in is not turned on for this project yet (enable it in Firebase Console → Authentication → Sign-in method).',
+        'auth/unauthorized-domain': 'This domain isn\'t authorized in Firebase yet (add it under Authentication → Settings → Authorized domains).',
+        'auth/user-disabled': 'This account has been disabled.',
+        'permission-denied': 'Your account was created, but saving your profile was blocked by the database rules.',
+      };
+      // Fall back to Firebase's own message (still human-readable) instead of a
+      // generic string, so real misconfigurations are visible instead of hidden.
+      return map[code] || fallbackMessage || 'Something went wrong. Please try again.';
+    }
+
+    // ---------------------------------------------------------------
+    // Submit handler
+    // ---------------------------------------------------------------
+    const authForm = document.getElementById('authForm');
+    const submitSpinner = document.getElementById('submitSpinner');
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading || (mode === 'signup' && !policyAgreed);
+      submitSpinner.classList.toggle('hidden', !loading);
+      submitLabel.style.opacity = loading ? '.6' : '1';
+    }
+
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAllErrors();
+
+      const emailEl = document.getElementById('email');
+      const pwEl = document.getElementById('password');
+      const email = emailEl.value.trim();
+      const password = pwEl.value;
+
+      let valid = true;
+      if (!/^\S+@\S+\.\S+$/.test(email)) { setError(emailEl, true); valid = false; }
+      if (!password) { setError(pwEl, true); valid = false; }
+
+      if (mode === 'signup') {
+        const fullNameEl = document.getElementById('fullName');
+        const phoneEl = document.getElementById('phoneNumber');
+        const confirmEl = document.getElementById('confirmPassword');
+        const countryCode = document.getElementById('countryCode').value;
+
+        if (fullNameEl.value.trim().length < 2) { setError(fullNameEl, true); valid = false; }
+        if (!/^[0-9]{7,12}$/.test(phoneEl.value.trim())) { setError(phoneEl, true); valid = false; }
+        if (evaluatePassword(password) < 3) { setError(pwEl, true); valid = false; }
+        if (!checkMatch() || !confirmEl.value) { setError(confirmEl, true); valid = false; }
+        if (!policyAgreed) {
+          policyRow.classList.add('shake-el');
+          setTimeout(() => policyRow.classList.remove('shake-el'), 500);
+          valid = false;
+        }
+
+        if (!valid) return;
+
+        setLoading(true);
+        try {
+          // Step 1: create the auth account. If this fails, nothing else runs.
+          const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+          // Step 2: save the profile. Kept in its own try/catch so a database
+          // rules issue doesn't make a successful signup look like a failure.
+          try {
+            await updateProfile(cred.user, { displayName: fullNameEl.value.trim() });
+            await set(ref(db, 'users/' + cred.user.uid), {
+              fullName: fullNameEl.value.trim(),
+              email,
+              phone: countryCode + phoneEl.value.trim(),
+              createdAt: Date.now(),
+            });
+          } catch (profileErr) {
+            console.error('Profile save failed:', profileErr);
+            showToast('info', 'Account created, but your profile details couldn\'t be saved. You can update them later.');
+          }
+
+          showToast('success', 'Account created! Welcome to the kitchen line.');
+          authForm.reset();
+          policyAgreed = false;
+          policyBox.classList.remove('agreed');
+          evaluatePassword('');
+          setMode('login');
+        } catch (err) {
+          console.error('Signup failed:', err);
+          showToast('error', mapFirebaseError(err.code, err.message));
+        } finally {
+          setLoading(false);
+        }
+
+      } else {
+        if (!valid) return;
+        setLoading(true);
+        try {
+          await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
+          await signInWithEmailAndPassword(auth, email, password);
+          showToast('success', 'Welcome back!');
+        } catch (err) {
+          console.error('Login failed:', err);
+          showToast('error', mapFirebaseError(err.code, err.message));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+
+    updateSubmitState();
+  </script>
+</body>
+</html>
