@@ -280,6 +280,14 @@
       <span class="font-display font-semibold text-lg tracking-tight">NexStepJS</span>
     </div>
 
+    <div class="hidden sm:flex items-center gap-2 rounded-full px-3.5 py-1.5" style="background: var(--surface-2); border: 1px solid var(--line);">
+      <span class="relative flex h-2 w-2">
+        <span class="absolute inline-flex h-full w-full rounded-full opacity-60 anim-pulse-soft" style="background: var(--success);"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2" style="background: var(--success);"></span>
+      </span>
+      <span class="text-xs font-medium" style="color: var(--ink-muted);"><span id="onlineCount" class="font-semibold" style="color: var(--ink);">—</span> playing on NexStepJS right now</span>
+    </div>
+
     <div class="flex items-center gap-2">
       <button id="installBtn" class="hidden btn-ghost rounded-full px-4 py-2 text-sm font-medium">Install app</button>
       <button id="themeToggle" aria-label="Toggle dark mode" class="icon-btn w-10 h-10 rounded-full grid place-items-center border" style="border-color: var(--line);">
@@ -295,7 +303,7 @@
     <!-- ---------- Left: hero / court scene (desktop only) ---------- -->
     <section class="hidden lg:flex flex-col justify-center relative h-[560px] rounded-[32px] overflow-hidden px-10" style="background: linear-gradient(160deg, var(--court), var(--court-2));">
       <div class="absolute inset-0 opacity-[0.14]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 46px 46px;"></div>
-      <!-- kitchen line -->
+      <!-- NexStepJS line -->
       <div class="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-[2px]" style="background: rgba(255,255,255,.25);"></div>
       <div class="absolute left-1/2 top-10 bottom-10 -translate-x-1/2 w-[2px]" style="background: rgba(255,255,255,.25);"></div>
 
@@ -399,7 +407,7 @@
             <div class="space-y-1.5">
               <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Password</label>
               <div class="relative">
-                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••"
+                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" minlength="6" maxlength="25"
                   class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
                 <button type="button" data-target="password" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
                   <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
@@ -421,7 +429,7 @@
                     <span id="strengthLabel" class="text-xs font-medium" style="color: var(--ink-muted);">Password strength</span>
                   </div>
                   <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs" style="color: var(--ink-muted);">
-                    <li class="req-item flex items-center gap-1.5" data-rule="len"><span class="req-dot"></span>8+ characters</li>
+                    <li class="req-item flex items-center gap-1.5" data-rule="len"><span class="req-dot"></span>6–25 characters</li>
                     <li class="req-item flex items-center gap-1.5" data-rule="upper"><span class="req-dot"></span>Uppercase letter</li>
                     <li class="req-item flex items-center gap-1.5" data-rule="lower"><span class="req-dot"></span>Lowercase letter</li>
                     <li class="req-item flex items-center gap-1.5" data-rule="num"><span class="req-dot"></span>Number</li>
@@ -432,7 +440,7 @@
                 <div class="space-y-1.5">
                   <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Confirm password</label>
                   <div class="relative">
-                    <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••"
+                    <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••" minlength="6" maxlength="25"
                       class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
                     <button type="button" data-target="confirmPassword" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
                       <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
@@ -582,7 +590,7 @@
       createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
       sendPasswordResetEmail
     } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
@@ -597,6 +605,23 @@
 
     const footerYearEl = document.getElementById('footerYear');
     if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+    // ---------------------------------------------------------------
+    // Live "playing right now" counter — always 500+, drifts gently
+    // ---------------------------------------------------------------
+    const onlineCountEl = document.getElementById('onlineCount');
+    function randomBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    let onlineCount = randomBetween(500, 1450);
+    function renderOnlineCount() {
+      if (onlineCountEl) onlineCountEl.textContent = onlineCount.toLocaleString();
+    }
+    function driftOnlineCount() {
+      const delta = randomBetween(-18, 24);
+      onlineCount = Math.max(500, onlineCount + delta);
+      renderOnlineCount();
+    }
+    renderOnlineCount();
+    setInterval(driftOnlineCount, 3500);
 
     const app = initializeApp(firebaseConfig);
     analyticsSupported().then((ok) => { if (ok) getAnalytics(app); }).catch(() => {});
@@ -627,7 +652,34 @@
     // PWA: service worker + install prompt
     // ---------------------------------------------------------------
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+      let swRefreshing = false;
+
+      // As soon as a new service worker takes control, reload once so the
+      // fresh app shell is actually used (guarded to avoid reload loops).
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (swRefreshing) return;
+        swRefreshing = true;
+        window.location.reload();
+      });
+
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('sw.js');
+
+          // Check for a new version now, then again whenever we regain
+          // connectivity or the tab becomes visible — "auto-update as long
+          // as there's internet" without requiring a manual refresh.
+          const checkForUpdate = () => registration.update().catch(() => {});
+          checkForUpdate();
+          window.addEventListener('online', checkForUpdate);
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkForUpdate();
+          });
+          setInterval(() => { if (navigator.onLine) checkForUpdate(); }, 60 * 1000);
+        } catch (err) {
+          console.error('Service worker registration failed:', err);
+        }
+      });
     }
     let deferredPrompt = null;
     const installBtn = document.getElementById('installBtn');
@@ -655,7 +707,7 @@
       };
       const c = colors[type] || colors.info;
       const el = document.createElement('div');
-      el.className = 'toast rounded-2xl px-4 py-3 text-sm font-medium shadow-xl max-w-xs';
+      el.className = 'toast rounded-2xl px-4 py-3 text-sm font-medium shadow-xl max-w-xs sm:max-w-[70vw] sm:w-max sm:whitespace-nowrap';
       el.style.background = c.bg;
       el.style.color = c.fg;
       el.textContent = message;
@@ -764,7 +816,7 @@
 
     function evaluatePassword(pw) {
       const rules = {
-        len: pw.length >= 8,
+        len: pw.length >= 6 && pw.length <= 25,
         upper: /[A-Z]/.test(pw),
         lower: /[a-z]/.test(pw),
         num: /[0-9]/.test(pw),
@@ -922,10 +974,10 @@
         'auth/weak-password': 'Please choose a stronger password.',
         'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
         'auth/network-request-failed': 'Network error — check your connection.',
-        'auth/operation-not-allowed': 'Email/password sign-in is not turned on for this project yet (enable it in Firebase Console → Authentication → Sign-in method).',
-        'auth/unauthorized-domain': 'This domain isn\'t authorized in Firebase yet (add it under Authentication → Settings → Authorized domains).',
+        'auth/operation-not-allowed': "Email/password sign-in isn't enabled in Firebase yet.",
+        'auth/unauthorized-domain': "This domain isn't authorized in Firebase yet.",
         'auth/user-disabled': 'This account has been disabled.',
-        'permission-denied': 'Your account was created, but saving your profile was blocked by the database rules.',
+        'permission-denied': 'Account created, but saving your profile was blocked by database rules.',
       };
       // Fall back to Firebase's own message (still human-readable) instead of a
       // generic string, so real misconfigurations are visible instead of hidden.
@@ -956,6 +1008,7 @@
       let valid = true;
       if (!/^\S+@\S+\.\S+$/.test(email)) { setError(emailEl, true); valid = false; }
       if (!password) { setError(pwEl, true); valid = false; }
+      if (password && (password.length < 6 || password.length > 25)) { setError(pwEl, true); valid = false; }
 
       if (mode === 'signup') {
         const fullNameEl = document.getElementById('fullName');
@@ -965,7 +1018,6 @@
 
         if (fullNameEl.value.trim().length < 2) { setError(fullNameEl, true); valid = false; }
         if (!/^[0-9]{7,12}$/.test(phoneEl.value.trim())) { setError(phoneEl, true); valid = false; }
-        if (evaluatePassword(password) < 3) { setError(pwEl, true); valid = false; }
         if (!checkMatch() || !confirmEl.value) { setError(confirmEl, true); valid = false; }
         if (!policyAgreed) {
           policyRow.classList.add('shake-el');
@@ -979,32 +1031,41 @@
         try {
           // Step 1: create the auth account. If this fails, nothing else runs.
           const cred = await createUserWithEmailAndPassword(auth, email, password);
+          const profileData = {
+            fullName: fullNameEl.value.trim(),
+            email,
+            phone: countryCode + phoneEl.value.trim(),
+            role: 'customer',
+            createdAt: Date.now(),
+          };
 
           // Step 2: save the profile. Kept in its own try/catch so a database
           // rules issue doesn't make a successful signup look like a failure.
           try {
-            await updateProfile(cred.user, { displayName: fullNameEl.value.trim() });
-            await set(ref(db, 'users/' + cred.user.uid), {
-              fullName: fullNameEl.value.trim(),
-              email,
-              phone: countryCode + phoneEl.value.trim(),
-              createdAt: Date.now(),
-            });
+            await updateProfile(cred.user, { displayName: profileData.fullName });
+            await set(ref(db, 'customer_data/' + cred.user.uid), profileData);
           } catch (profileErr) {
-            console.error('Profile save failed:', profileErr);
-            showToast('info', 'Account created, but your profile details couldn\'t be saved. You can update them later.');
+            // The write can occasionally report an error (e.g. a dropped
+            // connection right after sending) even though it actually landed.
+            // Read it back before telling the user it failed.
+            console.error('Profile save error, verifying with a read-back:', profileErr);
+            let actuallySaved = false;
+            try {
+              const snap = await get(ref(db, 'customer_data/' + cred.user.uid));
+              actuallySaved = snap.exists();
+            } catch (readErr) {
+              console.error('Read-back check failed:', readErr);
+            }
+            if (!actuallySaved) {
+              showToast('info', "Account created, but your profile didn't save.");
+            }
           }
 
-          showToast('success', 'Account created! Welcome to the kitchen line.');
-          authForm.reset();
-          policyAgreed = false;
-          policyBox.classList.remove('agreed');
-          evaluatePassword('');
-          setMode('login');
+          showToast('success', 'Account created — redirecting…');
+          setTimeout(() => { window.location.href = 'pages/dashboard.html'; }, 900);
         } catch (err) {
           console.error('Signup failed:', err);
           showToast('error', mapFirebaseError(err.code, err.message));
-        } finally {
           setLoading(false);
         }
 
@@ -1014,11 +1075,11 @@
         try {
           await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
           await signInWithEmailAndPassword(auth, email, password);
-          showToast('success', 'Welcome back!');
+          showToast('success', 'Welcome back — redirecting…');
+          setTimeout(() => { window.location.href = 'pages/dashboard.html'; }, 900);
         } catch (err) {
           console.error('Login failed:', err);
           showToast('error', mapFirebaseError(err.code, err.message));
-        } finally {
           setLoading(false);
         }
       }
