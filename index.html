@@ -1029,11 +1029,16 @@
         'auth/operation-not-allowed': "Email/password sign-in isn't enabled in Firebase yet.",
         'auth/unauthorized-domain': "This domain isn't authorized in Firebase yet.",
         'auth/user-disabled': 'This account has been disabled.',
-        'permission-denied': 'Account created, but saving your profile was blocked by database rules.',
       };
-      // Fall back to Firebase's own message (still human-readable) instead of a
-      // generic string, so real misconfigurations are visible instead of hidden.
-      return map[code] || fallbackMessage || 'Something went wrong. Please try again.';
+      if (map[code]) return map[code];
+      // The Realtime Database SDK throws "PERMISSION_DENIED" (uppercase,
+      // underscore) rather than Firestore's "permission-denied" — normalize
+      // so this actually catches it, and point straight at the fix.
+      const normalized = String(code || '').toUpperCase();
+      if (normalized === 'PERMISSION_DENIED' || /PERMISSION_DENIED/.test(String(fallbackMessage || ''))) {
+        return "Your Realtime Database rules are blocking this write — update the rules for customer_data to allow signed-in users to write their own record.";
+      }
+      return fallbackMessage || 'Something went wrong. Please try again.';
     }
 
     // ---------------------------------------------------------------
@@ -1109,7 +1114,7 @@
               console.error('Read-back check failed:', readErr);
             }
             if (!actuallySaved) {
-              showToast('info', "Account created, but your profile didn't save.");
+              showToast('info', mapFirebaseError(profileErr.code, profileErr.message));
             }
           }
 
@@ -1128,14 +1133,14 @@
           await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
           const cred = await signInWithEmailAndPassword(auth, email, password);
 
-          // Route by role: admins go to the admin dashboard, everyone else
-          // (customers) go to the user dashboard. Admin accounts are looked
-          // up under admin_data/{uid}; anything not found there is treated
-          // as a customer.
+          // Route by role: read this user's own record under
+          // customer_data/{uid} and branch on its `role` field — 'admin'
+          // goes to the admin dashboard, everything else goes to the
+          // customer dashboard.
           let destination = 'pages/user/dashboard.html';
           try {
-            const adminSnap = await get(ref(db, 'admin_data/' + cred.user.uid));
-            if (adminSnap.exists()) destination = 'pages/admin/dashboard.html';
+            const roleSnap = await get(ref(db, 'customer_data/' + cred.user.uid + '/role'));
+            if (roleSnap.exists() && roleSnap.val() === 'admin') destination = 'pages/admin/dashboard.html';
           } catch (roleErr) {
             console.error('Role lookup failed, defaulting to user dashboard:', roleErr);
           }

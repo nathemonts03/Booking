@@ -459,14 +459,14 @@
     onAuthStateChanged(auth, async (user) => {
       if (!user) { window.location.href = '../../index.html'; return; }
       try {
-        const adminSnap = await get(ref(db, 'admin_data/' + user.uid));
-        if (!adminSnap.exists()) {
+        const snap = await get(ref(db, 'customer_data/' + user.uid));
+        const record = snap.exists() ? snap.val() : null;
+        if (!record || record.role !== 'admin') {
           // Signed in, but not an admin — send them to the customer dashboard.
           window.location.href = '../user/dashboard.html';
           return;
         }
-        const adminData = adminSnap.val() || {};
-        initDashboard(user, adminData);
+        initDashboard(user, record);
       } catch (err) {
         console.error('Admin access check failed:', err);
         window.location.href = '../../index.html';
