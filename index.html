@@ -564,6 +564,18 @@
     </div>
   </div>
 
+  <!-- ============ Install Help Modal (iOS / unsupported browsers) ============ -->
+  <div id="installHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
+    <div class="modal-panel w-full max-w-sm rounded-3xl p-6 text-center" style="background: var(--surface);">
+      <div class="w-14 h-14 rounded-full mx-auto mb-4 grid place-items-center" style="background: var(--surface-2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M9 18h6"/><path d="M12 7v5M12 12l-2.2-2.2M12 12l2.2-2.2" /></svg>
+      </div>
+      <h3 class="font-display text-lg font-semibold mb-1.5">Add to Home Screen</h3>
+      <p id="installHelpText" class="text-sm mb-6" style="color: var(--ink-muted);">Open your browser menu and choose "Install app" or "Add to Home Screen".</p>
+      <button type="button" id="installHelpCloseBtn" class="btn-primary w-full rounded-xl py-2.5 text-sm font-semibold">Got it</button>
+    </div>
+  </div>
+
   <!-- ============ Not Available Modal (Google / Apple) ============ -->
   <div id="notAvailableModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
     <div class="modal-panel w-full max-w-sm rounded-3xl p-6 text-center" style="background: var(--surface);">
@@ -681,20 +693,60 @@
         }
       });
     }
+    function isIos() {
+      return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !window.MSStream;
+    }
+    function isStandalone() {
+      return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    }
+
     let deferredPrompt = null;
     const installBtn = document.getElementById('installBtn');
+    const installHelpModal = document.getElementById('installHelpModal');
+    const installHelpText = document.getElementById('installHelpText');
+
+    function showInstallHelp(text) {
+      installHelpText.textContent = text;
+      openModal(installHelpModal);
+    }
+
+    // Chrome / Edge / Android fire this when the site meets install criteria.
+    // Browsers that don't fire it (iOS Safari, Firefox, desktop Safari) still
+    // get the button, with instructions instead of a native prompt.
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
+      installBtn.textContent = 'Install app';
       installBtn.classList.remove('hidden');
     });
-    installBtn.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+
+    window.addEventListener('appinstalled', () => {
       deferredPrompt = null;
       installBtn.classList.add('hidden');
+      showToast('success', 'NexStepJS installed!');
     });
+
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.classList.add('hidden');
+        return;
+      }
+      if (isIos()) {
+        showInstallHelp('Tap the Share icon in Safari (the square with an arrow), then choose "Add to Home Screen".');
+      } else {
+        showInstallHelp('Open your browser\'s menu and look for "Install app" or "Add to Home Screen" — usually near the address bar or in the ⋮ / ⋯ menu.');
+      }
+    });
+    document.getElementById('installHelpCloseBtn').addEventListener('click', () => closeModal(installHelpModal));
+    installHelpModal.addEventListener('click', (e) => { if (e.target === installHelpModal) closeModal(installHelpModal); });
+
+    if (!isStandalone()) {
+      installBtn.textContent = isIos() ? 'Add to Home Screen' : 'Install app';
+      installBtn.classList.remove('hidden');
+    }
 
     // ---------------------------------------------------------------
     // Toasts
@@ -1062,7 +1114,7 @@
           }
 
           showToast('success', 'Account created — redirecting…');
-          setTimeout(() => { window.location.href = 'pages/dashboard.html'; }, 900);
+          setTimeout(() => { window.location.href = 'pages/user/dashboard.html'; }, 900);
         } catch (err) {
           console.error('Signup failed:', err);
           showToast('error', mapFirebaseError(err.code, err.message));
@@ -1074,9 +1126,22 @@
         setLoading(true);
         try {
           await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
-          await signInWithEmailAndPassword(auth, email, password);
+          const cred = await signInWithEmailAndPassword(auth, email, password);
+
+          // Route by role: admins go to the admin dashboard, everyone else
+          // (customers) go to the user dashboard. Admin accounts are looked
+          // up under admin_data/{uid}; anything not found there is treated
+          // as a customer.
+          let destination = 'pages/user/dashboard.html';
+          try {
+            const adminSnap = await get(ref(db, 'admin_data/' + cred.user.uid));
+            if (adminSnap.exists()) destination = 'pages/admin/dashboard.html';
+          } catch (roleErr) {
+            console.error('Role lookup failed, defaulting to user dashboard:', roleErr);
+          }
+
           showToast('success', 'Welcome back — redirecting…');
-          setTimeout(() => { window.location.href = 'pages/dashboard.html'; }, 900);
+          setTimeout(() => { window.location.href = destination; }, 900);
         } catch (err) {
           console.error('Login failed:', err);
           showToast('error', mapFirebaseError(err.code, err.message));

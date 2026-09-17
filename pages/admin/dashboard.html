@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Admin Dashboard · NexStepJS</title>
+
+<!-- PWA -->
+<link rel="manifest" href="../../manifest.json" />
+<meta name="theme-color" content="#0F2C34" />
+<link rel="apple-touch-icon" href="../../icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="../../icons/favicon-32.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="NexStepJS" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          body: ['"Inter"', 'sans-serif'],
+        },
+        colors: { court: { DEFAULT: '#0F2C34', 2: '#17515F' }, ball: '#D9F000', paddle: '#FF6B35' },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root {
+    --bg: #F3F1E8; --bg-soft: #EAE7DA; --surface: #FFFFFF; --surface-2: #F7F5EE;
+    --ink: #10262B; --ink-muted: #55696E; --line: rgba(16, 38, 43, 0.12);
+    --court: #0F2C34; --court-2: #17515F; --ball: #C9DE00; --ball-ink: #10262B;
+    --paddle: #E85A2A; --danger: #D8452E; --success: #2F9E5B; --link: #17515F;
+  }
+  html.dark {
+    --bg: #081A1F; --bg-soft: #0C232A; --surface: #10282F; --surface-2: #0C232A;
+    --ink: #EAF3EF; --ink-muted: #90ACAE; --line: rgba(234, 243, 239, 0.12);
+    --court: #081A1F; --court-2: #123640; --ball: #E4FF3D; --ball-ink: #10262B;
+    --paddle: #FF7A47; --danger: #FF6B57; --success: #4ADE80; --link: #7FE7D4;
+  }
+  * { -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; transition: background-color .4s ease, color .4s ease; }
+  .font-display { font-family: 'Space Grotesk', sans-serif; }
+  .thin-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+  .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+
+  @keyframes pop-in { 0% { opacity: 0; transform: scale(.94) translateY(8px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+  @keyframes rise-fade { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: translateY(0); } }
+  @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes pulse-soft { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+  @keyframes skeleton { 0% { background-position: -200px 0; } 100% { background-position: calc(200px + 100%) 0; } }
+
+  .anim-spin-slow { animation: spin-slow 7s linear infinite; }
+  .anim-pulse-soft { animation: pulse-soft 3s ease-in-out infinite; }
+  .rise-in { animation: rise-fade .45s cubic-bezier(.2,.8,.3,1) both; }
+
+  .skeleton { background: linear-gradient(90deg, var(--surface-2) 0px, var(--bg-soft) 40px, var(--surface-2) 80px); background-size: 200px 100%; animation: skeleton 1.4s ease-in-out infinite; border-radius: 8px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); transition: transform .25s ease, box-shadow .25s ease, background-color .3s ease; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 18px 34px -22px rgba(15,44,52,.35); }
+
+  .icon-btn { transition: transform .2s ease, background-color .2s ease; }
+  .icon-btn:hover { transform: scale(1.08); }
+  .icon-btn:active { transform: scale(.94); }
+
+  .btn-primary { background: var(--court); color: #F7F5EE; transition: transform .15s ease, box-shadow .25s ease, opacity .3s; box-shadow: 0 10px 24px -10px rgba(15,44,52,.5); }
+  html.dark .btn-primary { background: var(--ball); color: var(--ball-ink); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-primary:active { transform: translateY(0) scale(.98); }
+  .btn-ghost { border: 1.5px solid var(--line); color: var(--ink); transition: all .2s ease; }
+  .btn-ghost:hover { background: var(--surface-2); transform: translateY(-1px); }
+
+  /* ---------- Sidebar ---------- */
+  #sidebar { width: 272px; background: var(--surface); border-right: 1px solid var(--line); transition: transform .35s cubic-bezier(.4,0,.2,1), background-color .3s ease; }
+  @media (max-width: 1023px) {
+    #sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+  }
+  .nav-item { position: relative; display: flex; align-items: center; gap: .7rem; padding: .65rem .9rem; border-radius: 12px; color: var(--ink-muted); font-size: .9rem; font-weight: 500; transition: background-color .2s ease, color .2s ease, transform .15s ease; }
+  .nav-item:hover { background: var(--surface-2); color: var(--ink); transform: translateX(2px); }
+  .nav-item.active { background: var(--court); color: #F7F5EE; }
+  html.dark .nav-item.active { background: var(--ball); color: var(--ball-ink); }
+  .nav-item svg { flex-shrink: 0; }
+
+  /* ---------- Sidebar backdrop for mobile ---------- */
+  #sidebarBackdrop { background: rgba(8,20,23,.5); backdrop-filter: blur(2px); transition: opacity .3s ease; }
+
+  /* ---------- Table ---------- */
+  .data-table th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-muted); font-weight: 600; padding: .7rem .9rem; border-bottom: 1px solid var(--line); }
+  .data-table td { padding: .8rem .9rem; border-bottom: 1px solid var(--line); font-size: .875rem; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr { transition: background-color .15s ease; }
+  .data-table tbody tr:hover { background: var(--surface-2); }
+
+  /* ---------- Tour ---------- */
+  .tour-highlight { position: fixed; z-index: 201; border-radius: 16px; box-shadow: 0 0 0 6px rgba(217,240,0,.35), 0 0 0 9999px rgba(8,20,23,.66); transition: top .35s cubic-bezier(.4,0,.2,1), left .35s cubic-bezier(.4,0,.2,1), width .35s cubic-bezier(.4,0,.2,1), height .35s cubic-bezier(.4,0,.2,1); pointer-events: none; }
+  .tour-tooltip { position: fixed; z-index: 202; width: min(320px, 88vw); background: var(--surface); border-radius: 20px; padding: 1.25rem; box-shadow: 0 25px 50px -20px rgba(0,0,0,.45); animation: pop-in .3s cubic-bezier(.2,.8,.3,1.1); }
+
+  input[type="checkbox"].switch { appearance: none; width: 38px; height: 22px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; transition: background-color .25s ease; flex-shrink: 0; }
+  input[type="checkbox"].switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .25s ease; }
+  input[type="checkbox"].switch:checked { background: var(--court); }
+  html.dark input[type="checkbox"].switch:checked { background: var(--ball); }
+  input[type="checkbox"].switch:checked::after { transform: translateX(16px); }
+
+  #authGate { background: var(--bg); }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+</style>
+</head>
+<body class="font-body min-h-screen">
+
+  <!-- Auth gate: shown until we know the visitor is a signed-in admin -->
+  <div id="authGate" class="fixed inset-0 z-[300] grid place-items-center">
+    <div class="flex flex-col items-center gap-4">
+      <div class="w-12 h-12 rounded-full grid place-items-center anim-spin-slow" style="background: var(--ball);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.4"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/></svg>
+      </div>
+      <p class="text-sm" style="color: var(--ink-muted);">Checking your access…</p>
+    </div>
+  </div>
+
+  <!-- Mobile sidebar backdrop -->
+  <div id="sidebarBackdrop" class="fixed inset-0 z-50 hidden lg:hidden"></div>
+
+  <div class="flex min-h-screen">
+
+    <!-- ============ Sidebar ============ -->
+    <aside id="sidebar" class="flex flex-col shrink-0">
+      <div id="sidebarBrand" class="flex items-center gap-2.5 px-5 py-5">
+        <div class="w-9 h-9 rounded-full grid place-items-center anim-spin-slow" style="background: var(--ball);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.4"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/><circle cx="7" cy="7" r="1.05" fill="#10262B"/><circle cx="17" cy="7" r="1.05" fill="#10262B"/><circle cx="7" cy="17" r="1.05" fill="#10262B"/><circle cx="17" cy="17" r="1.05" fill="#10262B"/></svg>
+        </div>
+        <div>
+          <div class="font-display font-semibold text-[15px] leading-tight tracking-tight">NexStepJS</div>
+          <div class="text-[11px] font-medium" style="color: var(--ink-muted);">Admin console</div>
+        </div>
+        <button id="sidebarCloseBtn" class="lg:hidden ml-auto icon-btn w-8 h-8 rounded-full grid place-items-center" style="color: var(--ink-muted);" aria-label="Close menu">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto thin-scroll px-3 space-y-1 pb-4">
+        <button class="nav-item active w-full" data-section="overview">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>
+          Overview
+        </button>
+        <button class="nav-item w-full" data-section="bookings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+          Bookings
+        </button>
+        <button class="nav-item w-full" data-section="courts">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M12 3v18M3 12h18"/></svg>
+          Courts
+        </button>
+        <button id="navCustomers" class="nav-item w-full" data-section="customers">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="17.5" cy="8.5" r="2.4"/><path d="M16 13.8c2.6.3 4.7 2.4 4.7 5.3"/></svg>
+          Customers
+        </button>
+        <button class="nav-item w-full" data-section="payments">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/></svg>
+          Payments
+        </button>
+        <button class="nav-item w-full" data-section="schedule">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+          Open Play
+        </button>
+        <button class="nav-item w-full" data-section="reports">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+          Reports
+        </button>
+
+        <div class="h-px my-3" style="background: var(--line);"></div>
+
+        <button id="settingsNavBtn" class="nav-item w-full" data-section="settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.7 7.7 0 0 0-1.7-1L15 3h-4l-.3 2.6a7.7 7.7 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.9 7.9 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.7 7.7 0 0 0 1.7 1L11 21h4l.3-2.6a7.7 7.7 0 0 0 1.7-1l2.4 1 2-3.4z"/></svg>
+          Settings
+        </button>
+        <button id="helpTourBtn" class="nav-item w-full">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2-2.6 3.6"/><path d="M12 17.2h.01"/></svg>
+          Help &amp; tour
+        </button>
+      </nav>
+
+      <div class="px-3 pb-4 pt-3 border-t" style="border-color: var(--line);">
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl" style="background: var(--surface-2);">
+          <div id="adminAvatar" class="w-9 h-9 rounded-full grid place-items-center font-display font-semibold text-sm shrink-0" style="background: var(--court); color: #F7F5EE;">A</div>
+          <div class="min-w-0 flex-1">
+            <div id="adminName" class="text-sm font-semibold truncate">Admin</div>
+            <div class="text-[11px] font-medium" style="color: var(--ink-muted);">Administrator</div>
+          </div>
+          <button id="logoutBtn" class="icon-btn w-8 h-8 rounded-full grid place-items-center shrink-0" style="color: var(--ink-muted);" aria-label="Log out">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============ Main ============ -->
+    <div class="flex-1 min-w-0 flex flex-col">
+
+      <!-- Topbar -->
+      <header class="sticky top-0 z-40 flex items-center gap-3 px-4 sm:px-7 py-4 border-b" style="background: var(--bg); border-color: var(--line);">
+        <button id="sidebarOpenBtn" class="lg:hidden icon-btn w-9 h-9 rounded-full grid place-items-center border" style="border-color: var(--line);" aria-label="Open menu">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <h1 id="panelTitle" class="font-display text-lg sm:text-xl font-semibold">Overview</h1>
+        <div class="ml-auto flex items-center gap-2">
+          <button id="themeToggle" aria-label="Toggle dark mode" class="icon-btn w-9 h-9 rounded-full grid place-items-center border" style="border-color: var(--line);">
+            <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+            <svg id="iconMoon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 1 1 9.3 3.6a7 7 0 0 0 11.1 11.1Z"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="flex-1 px-4 sm:px-7 py-6 max-w-6xl w-full mx-auto">
+
+        <!-- ---------- Overview ---------- -->
+        <section id="panel-overview" class="space-y-6">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.02s">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium" style="color: var(--ink-muted);">Total customers</span>
+                <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg></span>
+              </div>
+              <div id="statCustomers" class="font-display text-2xl sm:text-3xl font-semibold">—</div>
+              <div class="text-xs mt-1" style="color: var(--success);">Live from your database</div>
+            </div>
+            <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.08s">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium" style="color: var(--ink-muted);">Bookings today</span>
+                <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--paddle)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/></svg></span>
+              </div>
+              <div class="font-display text-2xl sm:text-3xl font-semibold">0</div>
+              <div class="text-xs mt-1" style="color: var(--ink-muted);">Connect a bookings source</div>
+            </div>
+            <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.14s">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium" style="color: var(--ink-muted);">Active courts</span>
+                <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M12 3v18M3 12h18"/></svg></span>
+              </div>
+              <div class="font-display text-2xl sm:text-3xl font-semibold">0</div>
+              <div class="text-xs mt-1" style="color: var(--ink-muted);">Add courts to get started</div>
+            </div>
+            <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.2s">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-medium" style="color: var(--ink-muted);">Revenue today</span>
+                <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M17 7.5c0-2-2.2-3.5-5-3.5s-5 1.5-5 3.5 2.2 3 5 3 5 1 5 3.5-2.2 3.5-5 3.5-5-1.5-5-3.5"/></svg></span>
+              </div>
+              <div class="font-display text-2xl sm:text-3xl font-semibold">₱0</div>
+              <div class="text-xs mt-1" style="color: var(--ink-muted);">Connect payments to track this</div>
+            </div>
+          </div>
+
+          <div class="card rounded-2xl p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-display font-semibold">Newest customers</h2>
+              <button class="text-sm font-semibold text-link hover:underline" style="color: var(--link);" data-goto="customers">View all</button>
+            </div>
+            <div id="recentCustomers" class="space-y-3">
+              <div class="skeleton h-12 w-full"></div>
+              <div class="skeleton h-12 w-full"></div>
+              <div class="skeleton h-12 w-full"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- Customers ---------- -->
+        <section id="panel-customers" class="hidden space-y-4">
+          <div class="card rounded-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--line);">
+              <div>
+                <h2 class="font-display font-semibold">All customers</h2>
+                <p class="text-xs mt-0.5" style="color: var(--ink-muted);">Pulled live from <code>customer_data</code>.</p>
+              </div>
+              <span id="customerCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full" style="background: var(--surface-2); color: var(--ink-muted);">—</span>
+            </div>
+            <div class="overflow-x-auto thin-scroll">
+              <table class="w-full data-table">
+                <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th></tr></thead>
+                <tbody id="customersTableBody">
+                  <tr><td colspan="4"><div class="skeleton h-5 w-full"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- Generic placeholder panels ---------- -->
+        <section id="panel-bookings" class="hidden"></section>
+        <section id="panel-courts" class="hidden"></section>
+        <section id="panel-payments" class="hidden"></section>
+        <section id="panel-schedule" class="hidden"></section>
+        <section id="panel-reports" class="hidden"></section>
+
+        <!-- ---------- Settings ---------- -->
+        <section id="panel-settings" class="hidden space-y-4 max-w-xl">
+          <div class="card rounded-2xl p-5 sm:p-6 space-y-5">
+            <h2 class="font-display font-semibold">Appearance</h2>
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-sm font-medium">Dark mode</div>
+                <div class="text-xs" style="color: var(--ink-muted);">Switch between light and dark themes.</div>
+              </div>
+              <input type="checkbox" id="settingsThemeSwitch" class="switch" />
+            </div>
+          </div>
+          <div class="card rounded-2xl p-5 sm:p-6 space-y-5">
+            <h2 class="font-display font-semibold">Onboarding</h2>
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-sm font-medium">Dashboard walkthrough</div>
+                <div class="text-xs" style="color: var(--ink-muted);">Replay the step-by-step tour of this dashboard.</div>
+              </div>
+              <button id="replayTourBtn" class="btn-primary rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap">Replay tour</button>
+            </div>
+          </div>
+          <div class="card rounded-2xl p-5 sm:p-6 space-y-4">
+            <h2 class="font-display font-semibold">Account</h2>
+            <div class="text-sm"><span style="color: var(--ink-muted);">Name:</span> <span id="settingsAdminName" class="font-medium">—</span></div>
+            <div class="text-sm"><span style="color: var(--ink-muted);">Email:</span> <span id="settingsAdminEmail" class="font-medium">—</span></div>
+            <button id="settingsLogoutBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Log out</button>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ============ Guided tour ============ -->
+  <div id="tourLayer" class="hidden">
+    <div id="tourHighlight" class="tour-highlight"></div>
+    <div id="tourTooltip" class="tour-tooltip">
+      <div class="flex items-center justify-between mb-2">
+        <span id="tourStepLabel" class="text-xs font-semibold" style="color: var(--link);">Step 1 of 5</span>
+        <button id="tourSkipBtn" class="text-xs font-medium hover:underline" style="color: var(--ink-muted);">Skip tour</button>
+      </div>
+      <h3 id="tourTitle" class="font-display text-base font-semibold mb-1.5">Title</h3>
+      <p id="tourText" class="text-sm leading-relaxed" style="color: var(--ink-muted);">Text</p>
+      <label class="flex items-center gap-2 mt-4 cursor-pointer select-none">
+        <input type="checkbox" id="tourDontShowAgain" class="switch" />
+        <span class="text-xs font-medium" style="color: var(--ink-muted);">Don't show this again</span>
+      </label>
+      <div class="flex items-center justify-between mt-5">
+        <button id="tourBackBtn" class="btn-ghost rounded-full px-4 py-2 text-sm font-medium">Back</button>
+        <button id="tourNextBtn" class="btn-primary rounded-full px-5 py-2 text-sm font-semibold">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
+      authDomain: "pickleballsystem-729d3.firebaseapp.com",
+      databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "pickleballsystem-729d3",
+      storageBucket: "pickleballsystem-729d3.firebasestorage.app",
+      messagingSenderId: "352709442404",
+      appId: "1:352709442404:web:5bb00d7a77036c55d61871",
+      measurementId: "G-QBWPK4B56G"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // ---------------------------------------------------------------
+    // Theme
+    // ---------------------------------------------------------------
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const iconSun = document.getElementById('iconSun');
+    const iconMoon = document.getElementById('iconMoon');
+    const settingsThemeSwitch = document.getElementById('settingsThemeSwitch');
+
+    function applyTheme(theme) {
+      root.classList.toggle('dark', theme === 'dark');
+      iconSun.classList.toggle('hidden', theme === 'dark');
+      iconMoon.classList.toggle('hidden', theme !== 'dark');
+      settingsThemeSwitch.checked = theme === 'dark';
+      localStorage.setItem('kl-theme', theme);
+    }
+    applyTheme(localStorage.getItem('kl-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+    themeToggle.addEventListener('click', () => applyTheme(root.classList.contains('dark') ? 'light' : 'dark'));
+    settingsThemeSwitch.addEventListener('change', () => applyTheme(settingsThemeSwitch.checked ? 'dark' : 'light'));
+
+    // ---------------------------------------------------------------
+    // Service worker (same app, same scope)
+    // ---------------------------------------------------------------
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('../../sw.js').catch(() => {});
+    }
+
+    // ---------------------------------------------------------------
+    // Sidebar (mobile drawer)
+    // ---------------------------------------------------------------
+    const sidebar = document.getElementById('sidebar');
+    const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+    function openSidebar() { sidebar.classList.add('open'); sidebarBackdrop.classList.remove('hidden'); }
+    function closeSidebar() { sidebar.classList.remove('open'); sidebarBackdrop.classList.add('hidden'); }
+    document.getElementById('sidebarOpenBtn').addEventListener('click', openSidebar);
+    document.getElementById('sidebarCloseBtn').addEventListener('click', closeSidebar);
+    sidebarBackdrop.addEventListener('click', closeSidebar);
+
+    // ---------------------------------------------------------------
+    // Section navigation
+    // ---------------------------------------------------------------
+    const panelTitles = {
+      overview: 'Overview', bookings: 'Bookings', courts: 'Courts', customers: 'Customers',
+      payments: 'Payments', schedule: 'Open Play', reports: 'Reports', settings: 'Settings',
+    };
+    const placeholderSections = ['bookings', 'courts', 'payments', 'schedule', 'reports'];
+
+    function renderPlaceholder(section) {
+      const el = document.getElementById('panel-' + section);
+      if (!el || el.dataset.rendered) return;
+      el.dataset.rendered = '1';
+      el.innerHTML = `
+        <div class="card rounded-2xl p-10 text-center flex flex-col items-center gap-3">
+          <div class="w-12 h-12 rounded-full grid place-items-center" style="background: var(--surface-2);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          </div>
+          <h2 class="font-display font-semibold text-lg">${panelTitles[section]} is coming soon</h2>
+          <p class="text-sm max-w-xs" style="color: var(--ink-muted);">This section will light up once it's connected to your data. Check back soon.</p>
+        </div>`;
+    }
+
+    function goToSection(section) {
+      document.querySelectorAll('.nav-item[data-section]').forEach((btn) => btn.classList.toggle('active', btn.dataset.section === section));
+      document.querySelectorAll('main > section').forEach((s) => s.classList.add('hidden'));
+      const panel = document.getElementById('panel-' + section);
+      if (panel) panel.classList.remove('hidden');
+      document.getElementById('panelTitle').textContent = panelTitles[section] || 'Overview';
+      if (placeholderSections.includes(section)) renderPlaceholder(section);
+      closeSidebar();
+    }
+    document.querySelectorAll('.nav-item[data-section]').forEach((btn) => {
+      btn.addEventListener('click', () => goToSection(btn.dataset.section));
+    });
+    document.querySelectorAll('[data-goto]').forEach((btn) => {
+      btn.addEventListener('click', () => goToSection(btn.dataset.goto));
+    });
+
+    // ---------------------------------------------------------------
+    // Auth guard + role check
+    // ---------------------------------------------------------------
+    const authGate = document.getElementById('authGate');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = '../../index.html'; return; }
+      try {
+        const adminSnap = await get(ref(db, 'admin_data/' + user.uid));
+        if (!adminSnap.exists()) {
+          // Signed in, but not an admin — send them to the customer dashboard.
+          window.location.href = '../user/dashboard.html';
+          return;
+        }
+        const adminData = adminSnap.val() || {};
+        initDashboard(user, adminData);
+      } catch (err) {
+        console.error('Admin access check failed:', err);
+        window.location.href = '../../index.html';
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth).then(() => window.location.href = '../../index.html'));
+    document.getElementById('settingsLogoutBtn').addEventListener('click', () => signOut(auth).then(() => window.location.href = '../../index.html'));
+
+    function initDashboard(user, adminData) {
+      authGate.style.opacity = '0';
+      authGate.style.transition = 'opacity .3s ease';
+      setTimeout(() => authGate.remove(), 300);
+
+      const name = adminData.fullName || user.displayName || 'Admin';
+      const initials = name.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
+      document.getElementById('adminName').textContent = name;
+      document.getElementById('adminAvatar').textContent = initials;
+      document.getElementById('settingsAdminName').textContent = name;
+      document.getElementById('settingsAdminEmail').textContent = adminData.email || user.email || '—';
+
+      loadCustomers();
+      maybeStartTour();
+    }
+
+    // ---------------------------------------------------------------
+    // Live customer data
+    // ---------------------------------------------------------------
+    function timeAgoOrDate(ts) {
+      if (!ts) return '—';
+      const d = new Date(ts);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    async function loadCustomers() {
+      const recentEl = document.getElementById('recentCustomers');
+      const tableBody = document.getElementById('customersTableBody');
+      const statCustomers = document.getElementById('statCustomers');
+      const countBadge = document.getElementById('customerCountBadge');
+      try {
+        const snap = await get(ref(db, 'customer_data'));
+        const raw = snap.exists() ? snap.val() : {};
+        const customers = Object.values(raw).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+        statCustomers.textContent = customers.length.toLocaleString();
+        countBadge.textContent = customers.length + (customers.length === 1 ? ' customer' : ' customers');
+
+        if (customers.length === 0) {
+          recentEl.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--ink-muted);">No customers yet — they'll show up here as soon as people sign up.</p>`;
+          tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-sm" style="color: var(--ink-muted);">No customers yet.</td></tr>`;
+          return;
+        }
+
+        recentEl.innerHTML = customers.slice(0, 5).map((c) => `
+          <div class="flex items-center gap-3 rise-in">
+            <div class="w-9 h-9 rounded-full grid place-items-center font-display font-semibold text-xs shrink-0" style="background: var(--surface-2); color: var(--ink);">
+              ${(c.fullName || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-medium truncate">${escapeHtml(c.fullName || 'Unnamed')}</div>
+              <div class="text-xs truncate" style="color: var(--ink-muted);">${escapeHtml(c.email || '')}</div>
+            </div>
+            <div class="text-xs shrink-0" style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</div>
+          </div>
+        `).join('');
+
+        tableBody.innerHTML = customers.map((c) => `
+          <tr>
+            <td class="font-medium">${escapeHtml(c.fullName || 'Unnamed')}</td>
+            <td style="color: var(--ink-muted);">${escapeHtml(c.email || '—')}</td>
+            <td style="color: var(--ink-muted);">${escapeHtml(c.phone || '—')}</td>
+            <td style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to load customers:', err);
+        recentEl.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--danger);">Couldn't load customers right now.</p>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-sm" style="color: var(--danger);">Couldn't load customers right now.</td></tr>`;
+        statCustomers.textContent = '—';
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // ---------------------------------------------------------------
+    // Guided onboarding tour
+    // ---------------------------------------------------------------
+    const TOUR_KEY = 'nexstepjs_admin_tour_dismissed';
+    const tourLayer = document.getElementById('tourLayer');
+    const tourHighlight = document.getElementById('tourHighlight');
+    const tourTooltip = document.getElementById('tourTooltip');
+    const tourStepLabel = document.getElementById('tourStepLabel');
+    const tourTitle = document.getElementById('tourTitle');
+    const tourText = document.getElementById('tourText');
+    const tourBackBtn = document.getElementById('tourBackBtn');
+    const tourNextBtn = document.getElementById('tourNextBtn');
+    const tourSkipBtn = document.getElementById('tourSkipBtn');
+    const tourDontShowAgain = document.getElementById('tourDontShowAgain');
+
+    const tourSteps = [
+      { selector: '#sidebarBrand', title: 'Welcome to your dashboard', text: "This is your admin console for NexStepJS. Let's take a quick look around — it only takes a few seconds." },
+      { selector: '[data-section="overview"]', title: 'Overview', text: 'Your at-a-glance snapshot: total customers, bookings, courts, and revenue, all in one place.' },
+      { selector: '#navCustomers', title: 'Customers', text: 'Every person who signs up appears here in real time, pulled straight from your database.' },
+      { selector: '#settingsNavBtn', title: 'Settings', text: 'Switch between light and dark mode, and replay this tour anytime from here.' },
+      { selector: '#logoutBtn', title: "You're all set", text: 'That\'s your profile — log out securely from here whenever you\'re done for the day.' },
+    ];
+    let tourIndex = 0;
+
+    function positionTour() {
+      const step = tourSteps[tourIndex];
+      const target = document.querySelector(step.selector);
+      if (!target) { nextStep(); return; }
+
+      // On mobile, the sidebar is a drawer — open it so the target is visible.
+      if (window.innerWidth < 1024 && sidebar.contains(target)) openSidebar();
+
+      requestAnimationFrame(() => {
+        const rect = target.getBoundingClientRect();
+        const pad = 8;
+        tourHighlight.style.top = (rect.top - pad) + 'px';
+        tourHighlight.style.left = (rect.left - pad) + 'px';
+        tourHighlight.style.width = (rect.width + pad * 2) + 'px';
+        tourHighlight.style.height = (rect.height + pad * 2) + 'px';
+
+        const tooltipWidth = tourTooltip.offsetWidth || 320;
+        const tooltipHeight = tourTooltip.offsetHeight || 220;
+        let top = rect.bottom + 16;
+        if (top + tooltipHeight > window.innerHeight - 12) top = Math.max(12, rect.top - tooltipHeight - 16);
+        let left = rect.left;
+        if (left + tooltipWidth > window.innerWidth - 12) left = window.innerWidth - tooltipWidth - 12;
+        if (left < 12) left = 12;
+        tourTooltip.style.top = top + 'px';
+        tourTooltip.style.left = left + 'px';
+      });
+
+      tourStepLabel.textContent = `Step ${tourIndex + 1} of ${tourSteps.length}`;
+      tourTitle.textContent = step.title;
+      tourText.textContent = step.text;
+      tourBackBtn.style.visibility = tourIndex === 0 ? 'hidden' : 'visible';
+      tourNextBtn.textContent = tourIndex === tourSteps.length - 1 ? 'Finish' : 'Next';
+    }
+
+    function startTour() {
+      tourIndex = 0;
+      tourDontShowAgain.checked = false;
+      tourLayer.classList.remove('hidden');
+      positionTour();
+      window.addEventListener('resize', positionTour);
+    }
+    function endTour() {
+      if (tourDontShowAgain.checked) localStorage.setItem(TOUR_KEY, '1');
+      tourLayer.classList.add('hidden');
+      window.removeEventListener('resize', positionTour);
+    }
+    function nextStep() {
+      if (tourIndex >= tourSteps.length - 1) { endTour(); return; }
+      tourIndex += 1;
+      positionTour();
+    }
+    function prevStep() {
+      if (tourIndex === 0) return;
+      tourIndex -= 1;
+      positionTour();
+    }
+    function maybeStartTour() {
+      if (localStorage.getItem(TOUR_KEY) === '1') return;
+      setTimeout(startTour, 700);
+    }
+
+    tourNextBtn.addEventListener('click', nextStep);
+    tourBackBtn.addEventListener('click', prevStep);
+    tourSkipBtn.addEventListener('click', endTour);
+    document.getElementById('helpTourBtn').addEventListener('click', startTour);
+    document.getElementById('replayTourBtn').addEventListener('click', startTour);
+  </script>
+</body>
+</html>
