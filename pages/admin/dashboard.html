@@ -113,6 +113,48 @@
 
   #authGate { background: var(--bg); }
   @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+
+  /* ---------- Booking schedule grid ---------- */
+  .sched-nav-btn { transition: background-color .2s ease, opacity .2s ease; }
+  .sched-nav-btn:disabled { opacity: .35; cursor: not-allowed; }
+  .sched-legend-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; flex-shrink: 0; }
+  .sched-table th { text-align: center; font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-muted); font-weight: 700; padding: .55rem .5rem; border-bottom: 1px solid var(--line); background: var(--surface-2); position: sticky; top: 0; z-index: 1; }
+  .sched-table th:first-child { text-align: left; }
+  .sched-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0; }
+  .sched-table td:last-child { border-right: none; }
+  .sched-time-cell { font-size: .78rem; font-weight: 600; color: var(--ink); padding: .5rem .6rem !important; white-space: nowrap; background: var(--surface-2); }
+  .sched-slot { display: flex; align-items: center; justify-content: center; min-height: 38px; font-size: .68rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; cursor: pointer; transition: background-color .15s ease, filter .15s ease; user-select: none; }
+  .sched-slot:hover:not(.is-booked):not(.is-closed) { filter: brightness(0.95); }
+  html.dark .sched-slot:hover:not(.is-booked):not(.is-closed) { filter: brightness(1.15); }
+  .sched-slot.is-open { background: rgba(47,158,91,.14); color: var(--success); }
+  .sched-slot.is-selected { background: rgba(232,90,42,.18); color: var(--paddle); }
+  .sched-slot.is-booked { background: var(--bg-soft); color: var(--ink-muted); cursor: not-allowed; }
+  .sched-slot.is-mine { background: rgba(217,240,0,.28); color: #7a6a00; }
+  html.dark .sched-slot.is-mine { color: var(--ball); }
+  .sched-slot.is-closed { background: transparent; cursor: default; }
+  .sched-divider-row td { padding: .55rem 0; background: var(--surface); border-right: none; }
+  .sched-divider-line { position: relative; height: 1px; background: var(--line); }
+  .sched-divider-pill { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--surface); border: 1px solid var(--paddle); color: var(--paddle); font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: .2rem .7rem; border-radius: 999px; white-space: nowrap; }
+
+  /* ---------- Date picker modal (calendar) ---------- */
+  .cal-day { display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; border-radius: 10px; font-size: .8rem; font-weight: 600; cursor: pointer; transition: background-color .15s ease, color .15s ease, transform .15s ease; }
+  .cal-day.is-available:hover { background: var(--surface-2); transform: scale(1.05); }
+  .cal-day.is-selected { background: var(--court); color: #F7F5EE; }
+  html.dark .cal-day.is-selected { background: var(--ball); color: var(--ball-ink); }
+  .cal-day.is-disabled { color: var(--ink-muted); opacity: .3; cursor: not-allowed; }
+  .cal-day.is-today:not(.is-selected) { box-shadow: inset 0 0 0 1.5px var(--court-2); }
+  .cal-nav-btn { transition: background-color .2s ease, opacity .2s ease; }
+  .cal-nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* ---------- Booking modal 2-column layout ---------- */
+  .booking-col-divider { background: var(--line); }
+  @media (min-width: 1024px) { .booking-col-divider { width: 1px; align-self: stretch; } }
+  @media (max-width: 1023px) { .booking-col-divider { height: 1px; width: 100%; } }
+
+  /* ---------- Customer type toggle ---------- */
+  .seg-toggle { display: inline-flex; padding: 3px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+  .seg-toggle button { padding: .45rem .9rem; font-size: .8rem; font-weight: 600; border-radius: 9px; color: var(--ink-muted); transition: background-color .2s ease, color .2s ease, box-shadow .2s ease; white-space: nowrap; }
+  .seg-toggle button.active { background: var(--surface); color: var(--ink); box-shadow: 0 4px 10px -4px rgba(15,44,52,.25); }
 </style>
 </head>
 <body class="font-body min-h-screen">
@@ -213,6 +255,14 @@
         </button>
         <h1 id="panelTitle" class="font-display text-lg sm:text-xl font-semibold">Overview</h1>
         <div class="ml-auto flex items-center gap-2">
+          <div class="relative">
+            <button id="currencyBtn" class="icon-btn h-9 px-3 rounded-full grid place-items-center border text-sm font-semibold" style="border-color: var(--line);" aria-haspopup="listbox" aria-expanded="false" aria-label="Change currency">
+              <span id="currencyBtnLabel">₱ PHP</span>
+            </button>
+            <div id="currencyMenu" class="hidden absolute right-0 mt-2 w-40 rounded-xl border overflow-hidden z-50" style="background: var(--surface); border-color: var(--line); box-shadow: 0 18px 34px -18px rgba(15,44,52,.35);" role="listbox">
+              <!-- options injected by JS -->
+            </div>
+          </div>
           <button id="themeToggle" aria-label="Toggle dark mode" class="icon-btn w-9 h-9 rounded-full grid place-items-center border" style="border-color: var(--line);">
             <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
             <svg id="iconMoon" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 1 1 9.3 3.6a7 7 0 0 0 11.1 11.1Z"/></svg>
@@ -238,23 +288,23 @@
                 <span class="text-xs font-medium" style="color: var(--ink-muted);">Bookings today</span>
                 <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--paddle)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/></svg></span>
               </div>
-              <div class="font-display text-2xl sm:text-3xl font-semibold">0</div>
-              <div class="text-xs mt-1" style="color: var(--ink-muted);">Connect a bookings source</div>
+              <div id="statBookingsToday" class="font-display text-2xl sm:text-3xl font-semibold">—</div>
+              <div class="text-xs mt-1" style="color: var(--ink-muted);">Live from your database</div>
             </div>
             <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.14s">
               <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-medium" style="color: var(--ink-muted);">Active courts</span>
                 <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M12 3v18M3 12h18"/></svg></span>
               </div>
-              <div class="font-display text-2xl sm:text-3xl font-semibold">0</div>
-              <div class="text-xs mt-1" style="color: var(--ink-muted);">Add courts to get started</div>
+              <div id="statCourts" class="font-display text-2xl sm:text-3xl font-semibold">—</div>
+              <div id="statCourtsHint" class="text-xs mt-1" style="color: var(--ink-muted);">Add courts to get started</div>
             </div>
             <div class="card rounded-2xl p-4 sm:p-5 rise-in" style="animation-delay:.2s">
               <div class="flex items-center justify-between mb-3">
                 <span class="text-xs font-medium" style="color: var(--ink-muted);">Revenue today</span>
                 <span class="w-8 h-8 rounded-full grid place-items-center" style="background: var(--surface-2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.8" stroke-linecap="round"><path d="M12 2v20M17 7.5c0-2-2.2-3.5-5-3.5s-5 1.5-5 3.5 2.2 3 5 3 5 1 5 3.5-2.2 3.5-5 3.5-5-1.5-5-3.5"/></svg></span>
               </div>
-              <div class="font-display text-2xl sm:text-3xl font-semibold">₱0</div>
+              <div id="statRevenue" class="font-display text-2xl sm:text-3xl font-semibold">₱0</div>
               <div class="text-xs mt-1" style="color: var(--ink-muted);">Connect payments to track this</div>
             </div>
           </div>
@@ -278,7 +328,7 @@
             <div class="flex items-center justify-between px-5 py-4 border-b" style="border-color: var(--line);">
               <div>
                 <h2 class="font-display font-semibold">All customers</h2>
-                <p class="text-xs mt-0.5" style="color: var(--ink-muted);">Pulled live from <code>customer_data</code>.</p>
+                <p class="text-xs mt-0.5" style="color: var(--ink-muted);">Pulled live from <code>NexStepJS Database</code>.</p>
               </div>
               <span id="customerCountBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full" style="background: var(--surface-2); color: var(--ink-muted);">—</span>
             </div>
@@ -293,9 +343,68 @@
           </div>
         </section>
 
+        <!-- ---------- Courts ---------- -->
+        <section id="panel-courts" class="hidden space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="font-display font-semibold text-lg">Manage courts</h2>
+              <p class="text-xs mt-0.5" style="color: var(--ink-muted);">Live in <code>courts</code> — changes here update instantly for every customer.</p>
+            </div>
+            <button id="addCourtBtn" class="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add court
+            </button>
+          </div>
+
+          <div id="courtsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="skeleton h-36 w-full"></div>
+            <div class="skeleton h-36 w-full"></div>
+            <div class="skeleton h-36 w-full"></div>
+          </div>
+
+          <div id="courtsEmpty" class="hidden card rounded-2xl p-10 text-center flex flex-col items-center gap-3">
+            <div class="w-12 h-12 rounded-full grid place-items-center" style="background: var(--surface-2);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M12 3v18M3 12h18"/></svg>
+            </div>
+            <h2 class="font-display font-semibold text-lg">No courts yet</h2>
+            <p class="text-sm max-w-xs" style="color: var(--ink-muted);">Add your first court to start taking bookings.</p>
+          </div>
+        </section>
+
+        <!-- ---------- Bookings ---------- -->
+        <section id="panel-bookings" class="hidden space-y-4">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 class="font-display font-semibold text-lg">Manage bookings</h2>
+              <p id="bookingWindowNotice" class="text-xs mt-0.5" style="color: var(--ink-muted);">Bookings can be made up to <span id="bookingWindowNoticeDays">7</span> days ahead.</p>
+            </div>
+            <button id="addBookingBtn" class="btn-primary rounded-xl px-4 py-2.5 text-sm font-semibold whitespace-nowrap flex items-center gap-1.5">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add booking
+            </button>
+          </div>
+
+          <div class="card rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto thin-scroll">
+              <table class="w-full data-table">
+                <thead><tr><th>Court</th><th>Customer</th><th>Date</th><th>Time</th><th>Price</th><th></th></tr></thead>
+                <tbody id="bookingsTableBody">
+                  <tr><td colspan="6"><div class="skeleton h-5 w-full"></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="bookingsEmpty" class="hidden card rounded-2xl p-10 text-center flex flex-col items-center gap-3">
+            <div class="w-12 h-12 rounded-full grid place-items-center" style="background: var(--surface-2);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+            </div>
+            <h2 class="font-display font-semibold text-lg">No bookings yet</h2>
+            <p class="text-sm max-w-xs" style="color: var(--ink-muted);">Add a booking to reserve a court for a customer.</p>
+          </div>
+        </section>
+
         <!-- ---------- Generic placeholder panels ---------- -->
-        <section id="panel-bookings" class="hidden"></section>
-        <section id="panel-courts" class="hidden"></section>
         <section id="panel-payments" class="hidden"></section>
         <section id="panel-schedule" class="hidden"></section>
         <section id="panel-reports" class="hidden"></section>
@@ -311,6 +420,21 @@
               </div>
               <input type="checkbox" id="settingsThemeSwitch" class="switch" />
             </div>
+          </div>
+          <div class="card rounded-2xl p-5 sm:p-6 space-y-5">
+            <h2 class="font-display font-semibold">Bookings</h2>
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-sm font-medium">Booking window</div>
+                <div class="text-xs" style="color: var(--ink-muted);">How many days ahead customers and admins can book a court. E.g. 7 days means only the next week is bookable.</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="number" id="bookingWindowInput" min="1" max="365" step="1" class="w-24 rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+              <span class="text-sm" style="color: var(--ink-muted);">days</span>
+              <button id="saveBookingWindowBtn" class="btn-primary rounded-xl px-4 py-2 text-sm font-semibold ml-auto">Save</button>
+            </div>
+            <p id="bookingWindowSaved" class="hidden text-xs" style="color: var(--success);">Saved.</p>
           </div>
           <div class="card rounded-2xl p-5 sm:p-6 space-y-5">
             <h2 class="font-display font-semibold">Onboarding</h2>
@@ -331,6 +455,194 @@
         </section>
 
       </main>
+    </div>
+  </div>
+
+  <!-- ============ Booking modal ============ -->
+  <div id="bookingModalBackdrop" class="hidden fixed inset-0 z-[210] grid place-items-center p-4" style="background: rgba(8,20,23,.5); backdrop-filter: blur(2px);">
+    <div class="card rounded-2xl p-6 w-full max-w-4xl max-h-[92vh] overflow-y-auto thin-scroll" style="animation: pop-in .25s cubic-bezier(.2,.8,.3,1.1);">
+      <h3 id="bookingModalTitle" class="font-display text-lg font-semibold mb-4">Add booking</h3>
+      <form id="bookingForm" class="space-y-4">
+
+        <div class="flex flex-col lg:flex-row gap-6">
+
+          <!-- ===== Left column: date + schedule ===== -->
+          <div class="flex-1 min-w-0 space-y-4">
+
+            <!-- Date picker trigger -->
+            <button type="button" id="schedDateBtn" class="w-full flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left" style="border-color: var(--line);">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>
+              <span id="schedDateLabel" class="text-sm font-semibold truncate flex-1">—</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            <p id="schedAvailabilityNotice" class="text-xs -mt-2" style="color: var(--ink-muted);">Bookings are available until —</p>
+
+            <!-- Legend -->
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl px-3 py-2" style="background: var(--surface-2);">
+              <span class="flex items-center gap-1.5 text-xs font-medium" style="color: var(--ink-muted);"><span class="sched-legend-swatch" style="background: rgba(47,158,91,.35);"></span>Open</span>
+              <span class="flex items-center gap-1.5 text-xs font-medium" style="color: var(--ink-muted);"><span class="sched-legend-swatch" style="background: rgba(232,90,42,.4);"></span>Selected</span>
+              <span class="flex items-center gap-1.5 text-xs font-medium" style="color: var(--ink-muted);"><span class="sched-legend-swatch" style="background: var(--bg-soft); border: 1px solid var(--line);"></span>Booked</span>
+              <span class="flex items-center gap-1.5 text-xs font-medium" style="color: var(--ink-muted);"><span class="sched-legend-swatch" style="background: rgba(217,240,0,.5);"></span>This booking</span>
+            </div>
+
+            <!-- Schedule grid -->
+            <div id="schedGridWrap" class="rounded-xl border overflow-hidden" style="border-color: var(--line);">
+              <div class="overflow-auto thin-scroll" style="max-height: 320px;">
+                <table id="schedTable" class="w-full sched-table text-sm">
+                  <thead id="schedTableHead"></thead>
+                  <tbody id="schedTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <p id="schedHint" class="text-xs -mt-2" style="color: var(--ink-muted);">Tap a court's open slot to start a booking, then tap a later slot in the same column to extend it.</p>
+          </div>
+
+          <!-- Divider -->
+          <div class="booking-col-divider"></div>
+
+          <!-- ===== Right column: customer ===== -->
+          <div class="w-full lg:w-[300px] shrink-0 space-y-4">
+            <div>
+              <div class="text-xs font-medium mb-1.5" style="color: var(--ink-muted);">Customer</div>
+              <div class="seg-toggle w-full grid grid-cols-2">
+                <button type="button" id="custTypeExistingBtn" class="active">Existing</button>
+                <button type="button" id="custTypeNewBtn">New customer</button>
+              </div>
+            </div>
+
+            <!-- Existing customer picker -->
+            <div id="custExistingFields" class="space-y-1.5">
+              <label for="bookingCustomerSelect" class="text-xs font-medium block" style="color: var(--ink-muted);">Choose customer</label>
+              <select id="bookingCustomerSelect" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);">
+                <option value="">Select a customer…</option>
+              </select>
+              <div id="custExistingPreview" class="hidden rounded-xl px-3.5 py-3 text-xs space-y-0.5" style="background: var(--surface-2); color: var(--ink-muted);"></div>
+            </div>
+
+            <!-- New customer fields -->
+            <div id="custNewFields" class="hidden space-y-4">
+              <div>
+                <label for="bookingCustomerInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Full name</label>
+                <input id="bookingCustomerInput" type="text" placeholder="e.g. Juan Dela Cruz" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+              </div>
+              <div>
+                <label for="bookingEmailInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Email</label>
+                <input id="bookingEmailInput" type="email" placeholder="e.g. juan@email.com" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+              </div>
+              <div>
+                <label for="bookingPhoneInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Contact number</label>
+                <input id="bookingPhoneInput" type="tel" placeholder="e.g. 0917 123 4567" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="bookingFormError" class="hidden text-xs" style="color: var(--danger);"></p>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" id="bookingModalCancelBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Cancel</button>
+          <button type="submit" id="bookingModalSaveBtn" class="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">Save booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Date picker (calendar) modal ============ -->
+  <div id="datePickerBackdrop" class="hidden fixed inset-0 z-[220] grid place-items-center p-4" style="background: rgba(8,20,23,.5); backdrop-filter: blur(2px);">
+    <div class="card rounded-2xl p-5 w-full max-w-sm" style="animation: pop-in .25s cubic-bezier(.2,.8,.3,1.1);">
+      <div class="flex items-center justify-between mb-4">
+        <button type="button" id="calPrevMonthBtn" class="cal-nav-btn icon-btn w-8 h-8 rounded-full grid place-items-center" style="color: var(--ink-muted);" aria-label="Previous month">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <div id="calMonthLabel" class="font-display font-semibold text-sm">—</div>
+        <button type="button" id="calNextMonthBtn" class="cal-nav-btn icon-btn w-8 h-8 rounded-full grid place-items-center" style="color: var(--ink-muted);" aria-label="Next month">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-1.5">
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Su</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Mo</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Tu</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">We</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Th</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Fr</div>
+        <div class="text-center text-[10px] font-semibold uppercase" style="color: var(--ink-muted);">Sa</div>
+      </div>
+      <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+      <p id="calAvailabilityNotice" class="text-xs text-center mt-4" style="color: var(--ink-muted);">Available up to —</p>
+      <div class="flex items-center justify-end gap-2 mt-2">
+        <button type="button" id="calCancelBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Delete booking modal ============ -->
+  <div id="deleteBookingModalBackdrop" class="hidden fixed inset-0 z-[210] grid place-items-center p-4" style="background: rgba(8,20,23,.5); backdrop-filter: blur(2px);">
+    <div class="card rounded-2xl p-6 w-full max-w-sm" style="animation: pop-in .25s cubic-bezier(.2,.8,.3,1.1);">
+      <div class="w-11 h-11 rounded-full grid place-items-center mb-3" style="background: rgba(216,69,46,.12);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+      </div>
+      <h3 class="font-display text-lg font-semibold mb-1.5">Delete booking</h3>
+      <p id="deleteBookingText" class="text-sm mb-4" style="color: var(--ink-muted);">This can't be undone.</p>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" id="deleteBookingCancelBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Cancel</button>
+        <button type="button" id="deleteBookingConfirmBtn" class="rounded-xl px-4 py-2 text-sm font-semibold text-white" style="background: var(--danger);">Delete booking</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Court modal ============ -->
+  <div id="courtModalBackdrop" class="hidden fixed inset-0 z-[210] grid place-items-center p-4" style="background: rgba(8,20,23,.5); backdrop-filter: blur(2px);">
+    <div class="card rounded-2xl p-6 w-full max-w-sm" style="animation: pop-in .25s cubic-bezier(.2,.8,.3,1.1);">
+      <h3 id="courtModalTitle" class="font-display text-lg font-semibold mb-4">Add court</h3>
+      <form id="courtForm" class="space-y-4">
+        <div>
+          <label for="courtTitleInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Court title</label>
+          <input id="courtTitleInput" type="text" required placeholder="e.g. Court 1" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+        </div>
+        <div>
+          <label for="courtPriceInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Price per hour</label>
+          <input id="courtPriceInput" type="number" min="0" step="0.01" required placeholder="e.g. 300" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none" style="border-color: var(--line);" />
+        </div>
+        <div class="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2.5" style="background: var(--surface-2);">
+          <div>
+            <div class="text-sm font-medium">Open 24 hours</div>
+            <div class="text-xs" style="color: var(--ink-muted);">Court is available around the clock, every day.</div>
+          </div>
+          <input type="checkbox" id="courtOpen24Input" class="switch" />
+        </div>
+        <div id="courtHoursFields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="courtOpenInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Opens at</label>
+            <input id="courtOpenInput" type="time" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none disabled:opacity-50" style="border-color: var(--line);" />
+          </div>
+          <div>
+            <label for="courtCloseInput" class="text-xs font-medium block mb-1.5" style="color: var(--ink-muted);">Closes at</label>
+            <input id="courtCloseInput" type="time" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none disabled:opacity-50" style="border-color: var(--line);" />
+          </div>
+        </div>
+        <p id="courtHoursHint" class="hidden text-xs -mt-2" style="color: var(--ink-muted);"></p>
+        <p id="courtFormError" class="hidden text-xs" style="color: var(--danger);"></p>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" id="courtModalCancelBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Cancel</button>
+          <button type="submit" id="courtModalSaveBtn" class="btn-primary rounded-xl px-4 py-2 text-sm font-semibold">Save court</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Delete court modal ============ -->
+  <div id="deleteCourtModalBackdrop" class="hidden fixed inset-0 z-[210] grid place-items-center p-4" style="background: rgba(8,20,23,.5); backdrop-filter: blur(2px);">
+    <div class="card rounded-2xl p-6 w-full max-w-sm" style="animation: pop-in .25s cubic-bezier(.2,.8,.3,1.1);">
+      <div class="w-11 h-11 rounded-full grid place-items-center mb-3" style="background: rgba(216,69,46,.12);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+      </div>
+      <h3 class="font-display text-lg font-semibold mb-1.5">Delete court</h3>
+      <p class="text-sm mb-4" style="color: var(--ink-muted);">This can't be undone. To confirm, type the court name — <span id="deleteCourtNameTarget" class="font-semibold" style="color: var(--ink);"></span> — below.</p>
+      <input id="deleteCourtConfirmInput" type="text" autocomplete="off" placeholder="Type the court name" class="w-full rounded-xl px-3.5 py-2.5 text-sm border bg-transparent outline-none mb-4" style="border-color: var(--line);" />
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" id="deleteCourtCancelBtn" class="btn-ghost rounded-xl px-4 py-2 text-sm font-medium">Cancel</button>
+        <button type="button" id="deleteCourtConfirmBtn" disabled class="rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed" style="background: var(--danger);">Delete court</button>
+      </div>
     </div>
   </div>
 
@@ -358,7 +670,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+    import { getDatabase, ref, get, push, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
@@ -373,6 +685,67 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
+
+    // ---------------------------------------------------------------
+    // Currency
+    // ---------------------------------------------------------------
+    const CURRENCIES = {
+      PHP: { symbol: '₱', label: '₱ PHP' },
+      USD: { symbol: '$', label: '$ USD' },
+      EUR: { symbol: '€', label: '€ EUR' },
+      GBP: { symbol: '£', label: '£ GBP' },
+      JPY: { symbol: '¥', label: '¥ JPY' },
+      AUD: { symbol: 'A$', label: 'A$ AUD' },
+    };
+    const CURRENCY_KEY = 'nexstepjs_currency';
+    let currentCurrency = localStorage.getItem(CURRENCY_KEY) || 'PHP';
+    if (!CURRENCIES[currentCurrency]) currentCurrency = 'PHP';
+
+    const currencyBtn = document.getElementById('currencyBtn');
+    const currencyBtnLabel = document.getElementById('currencyBtnLabel');
+    const currencyMenu = document.getElementById('currencyMenu');
+
+    function currencySymbol() { return CURRENCIES[currentCurrency].symbol; }
+
+    function renderCurrencyMenu() {
+      currencyMenu.innerHTML = Object.entries(CURRENCIES).map(([code, c]) => `
+        <button type="button" class="currency-option w-full text-left px-3.5 py-2.5 text-sm font-medium flex items-center justify-between" data-code="${code}" role="option" style="color: var(--ink);">
+          <span>${c.label}</span>
+          ${code === currentCurrency ? '<span style="color: var(--link);">✓</span>' : ''}
+        </button>
+      `).join('');
+      currencyMenu.querySelectorAll('.currency-option').forEach((btn) => {
+        btn.addEventListener('mouseenter', () => btn.style.background = 'var(--surface-2)');
+        btn.addEventListener('mouseleave', () => btn.style.background = 'transparent');
+        btn.addEventListener('click', () => setCurrency(btn.dataset.code));
+      });
+    }
+
+    function setCurrency(code) {
+      if (!CURRENCIES[code]) return;
+      currentCurrency = code;
+      localStorage.setItem(CURRENCY_KEY, code);
+      currencyBtnLabel.textContent = CURRENCIES[code].label;
+      closeCurrencyMenu();
+      renderCurrencyMenu();
+      // Refresh anything on screen that shows a price using the data already loaded.
+      if (courtsLoaded) renderCourts(currentCourtsData);
+      if (bookingsLoaded) renderBookings(currentBookingsData);
+      if (typeof renderSchedGrid === 'function') renderSchedGrid();
+    }
+
+    function openCurrencyMenu() { currencyMenu.classList.remove('hidden'); currencyBtn.setAttribute('aria-expanded', 'true'); }
+    function closeCurrencyMenu() { currencyMenu.classList.add('hidden'); currencyBtn.setAttribute('aria-expanded', 'false'); }
+
+    currencyBtnLabel.textContent = CURRENCIES[currentCurrency].label;
+    renderCurrencyMenu();
+    currencyBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currencyMenu.classList.contains('hidden') ? openCurrencyMenu() : closeCurrencyMenu();
+    });
+    document.addEventListener('click', (e) => {
+      if (!currencyMenu.contains(e.target) && e.target !== currencyBtn) closeCurrencyMenu();
+    });
 
     // ---------------------------------------------------------------
     // Theme
@@ -419,7 +792,7 @@
       overview: 'Overview', bookings: 'Bookings', courts: 'Courts', customers: 'Customers',
       payments: 'Payments', schedule: 'Open Play', reports: 'Reports', settings: 'Settings',
     };
-    const placeholderSections = ['bookings', 'courts', 'payments', 'schedule', 'reports'];
+    const placeholderSections = ['payments', 'schedule', 'reports'];
 
     function renderPlaceholder(section) {
       const el = document.getElementById('panel-' + section);
@@ -442,6 +815,8 @@
       if (panel) panel.classList.remove('hidden');
       document.getElementById('panelTitle').textContent = panelTitles[section] || 'Overview';
       if (placeholderSections.includes(section)) renderPlaceholder(section);
+      if (section === 'courts') loadCourts();
+      if (section === 'bookings') loadBookings();
       closeSidebar();
     }
     document.querySelectorAll('.nav-item[data-section]').forEach((btn) => {
@@ -489,12 +864,17 @@
       document.getElementById('settingsAdminEmail').textContent = adminData.email || user.email || '—';
 
       loadCustomers();
+      loadCourts();
+      loadBookingWindowSetting();
+      loadBookings();
       maybeStartTour();
     }
 
     // ---------------------------------------------------------------
     // Live customer data
     // ---------------------------------------------------------------
+    let currentCustomersData = {};
+
     function timeAgoOrDate(ts) {
       if (!ts) return '—';
       const d = new Date(ts);
@@ -509,7 +889,10 @@
       try {
         const snap = await get(ref(db, 'customer_data'));
         const raw = snap.exists() ? snap.val() : {};
-        const customers = Object.values(raw).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        currentCustomersData = raw;
+        const customers = Object.entries(raw)
+          .map(([id, c]) => ({ id, ...c }))
+          .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
         statCustomers.textContent = customers.length.toLocaleString();
         countBadge.textContent = customers.length + (customers.length === 1 ? ' customer' : ' customers');
@@ -517,30 +900,32 @@
         if (customers.length === 0) {
           recentEl.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--ink-muted);">No customers yet — they'll show up here as soon as people sign up.</p>`;
           tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-sm" style="color: var(--ink-muted);">No customers yet.</td></tr>`;
-          return;
+        } else {
+          recentEl.innerHTML = customers.slice(0, 5).map((c) => `
+            <div class="flex items-center gap-3 rise-in">
+              <div class="w-9 h-9 rounded-full grid place-items-center font-display font-semibold text-xs shrink-0" style="background: var(--surface-2); color: var(--ink);">
+                ${(c.fullName || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="text-sm font-medium truncate">${escapeHtml(c.fullName || 'Unnamed')}</div>
+                <div class="text-xs truncate" style="color: var(--ink-muted);">${escapeHtml(c.email || '')}</div>
+              </div>
+              <div class="text-xs shrink-0" style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</div>
+            </div>
+          `).join('');
+
+          tableBody.innerHTML = customers.map((c) => `
+            <tr>
+              <td class="font-medium">${escapeHtml(c.fullName || 'Unnamed')}</td>
+              <td style="color: var(--ink-muted);">${escapeHtml(c.email || '—')}</td>
+              <td style="color: var(--ink-muted);">${escapeHtml(c.phone || '—')}</td>
+              <td style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</td>
+            </tr>
+          `).join('');
         }
 
-        recentEl.innerHTML = customers.slice(0, 5).map((c) => `
-          <div class="flex items-center gap-3 rise-in">
-            <div class="w-9 h-9 rounded-full grid place-items-center font-display font-semibold text-xs shrink-0" style="background: var(--surface-2); color: var(--ink);">
-              ${(c.fullName || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-medium truncate">${escapeHtml(c.fullName || 'Unnamed')}</div>
-              <div class="text-xs truncate" style="color: var(--ink-muted);">${escapeHtml(c.email || '')}</div>
-            </div>
-            <div class="text-xs shrink-0" style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</div>
-          </div>
-        `).join('');
-
-        tableBody.innerHTML = customers.map((c) => `
-          <tr>
-            <td class="font-medium">${escapeHtml(c.fullName || 'Unnamed')}</td>
-            <td style="color: var(--ink-muted);">${escapeHtml(c.email || '—')}</td>
-            <td style="color: var(--ink-muted);">${escapeHtml(c.phone || '—')}</td>
-            <td style="color: var(--ink-muted);">${timeAgoOrDate(c.createdAt)}</td>
-          </tr>
-        `).join('');
+        // Keep the booking modal's "existing customer" dropdown in sync.
+        if (typeof renderCustomerSelect === 'function') renderCustomerSelect();
       } catch (err) {
         console.error('Failed to load customers:', err);
         recentEl.innerHTML = `<p class="text-sm text-center py-4" style="color: var(--danger);">Couldn't load customers right now.</p>`;
@@ -552,6 +937,868 @@
     function escapeHtml(str) {
       return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
+
+    // ---------------------------------------------------------------
+    // Courts (live, admin-editable — pushed to the realtime database)
+    // ---------------------------------------------------------------
+    const courtsRef = ref(db, 'courts');
+    const courtsGrid = document.getElementById('courtsGrid');
+    const courtsEmpty = document.getElementById('courtsEmpty');
+    const addCourtBtn = document.getElementById('addCourtBtn');
+    const courtModalBackdrop = document.getElementById('courtModalBackdrop');
+    const courtModalTitle = document.getElementById('courtModalTitle');
+    const courtForm = document.getElementById('courtForm');
+    const courtTitleInput = document.getElementById('courtTitleInput');
+    const courtPriceInput = document.getElementById('courtPriceInput');
+    const courtOpenInput = document.getElementById('courtOpenInput');
+    const courtCloseInput = document.getElementById('courtCloseInput');
+    const courtOpen24Input = document.getElementById('courtOpen24Input');
+    const courtHoursFields = document.getElementById('courtHoursFields');
+    const courtHoursHint = document.getElementById('courtHoursHint');
+    const courtFormError = document.getElementById('courtFormError');
+    const courtModalCancelBtn = document.getElementById('courtModalCancelBtn');
+    const courtModalSaveBtn = document.getElementById('courtModalSaveBtn');
+
+    let courtsLoaded = false;
+    let editingCourtId = null;
+    let currentCourtsData = {};
+
+    function formatPrice(price) {
+      const n = Number(price) || 0;
+      return currencySymbol() + n.toLocaleString(undefined, { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+    }
+
+    function formatTime12h(hhmm) {
+      if (!hhmm) return '';
+      const [h, m] = hhmm.split(':').map(Number);
+      const period = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+    }
+
+    // Renders a court's hours, flagging an overnight range (e.g. 6AM - 3AM)
+    // so it's clear the closing time falls on the next day.
+    function formatCourtHours(court) {
+      if (court.is24Hours) return 'Open 24 hours';
+      if (!court.openTime || !court.closeTime) return '';
+      const overnight = court.closeTime <= court.openTime;
+      const closeLabel = formatTime12h(court.closeTime) + (overnight ? ' (next day)' : '');
+      return `${formatTime12h(court.openTime)} – ${closeLabel}`;
+    }
+
+    function setHoursFieldsDisabled(disabled) {
+      courtOpenInput.disabled = disabled;
+      courtCloseInput.disabled = disabled;
+      courtOpenInput.required = !disabled;
+      courtCloseInput.required = !disabled;
+      courtHoursFields.style.opacity = disabled ? '.5' : '1';
+      courtHoursHint.classList.toggle('hidden', !disabled);
+      if (disabled) courtHoursHint.textContent = "Hours are disabled while the court is open 24 hours.";
+    }
+    courtOpen24Input.addEventListener('change', () => setHoursFieldsDisabled(courtOpen24Input.checked));
+
+    function renderCourts(courtsObj) {
+      currentCourtsData = courtsObj || {};
+      const entries = Object.entries(courtsObj || {}).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+      courtsGrid.classList.toggle('hidden', entries.length === 0);
+      courtsEmpty.classList.toggle('hidden', entries.length !== 0);
+
+      const statCourts = document.getElementById('statCourts');
+      const statCourtsHint = document.getElementById('statCourtsHint');
+      statCourts.textContent = entries.length.toLocaleString();
+      statCourtsHint.textContent = entries.length === 0 ? 'Add courts to get started' : 'Live from your database';
+      statCourtsHint.style.color = entries.length === 0 ? 'var(--ink-muted)' : 'var(--success)';
+
+      courtsGrid.innerHTML = entries.map(([id, court]) => `
+        <div class="card rounded-2xl p-5 rise-in">
+          <div class="flex items-start justify-between gap-2 mb-3">
+            <div class="w-9 h-9 rounded-full grid place-items-center shrink-0" style="background: var(--surface-2);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M12 3v18M3 12h18"/></svg>
+            </div>
+            <div class="flex items-center gap-1">
+              <button class="icon-btn w-8 h-8 rounded-full grid place-items-center court-edit-btn" data-id="${id}" style="color: var(--ink-muted);" aria-label="Edit court">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button class="icon-btn w-8 h-8 rounded-full grid place-items-center court-delete-btn" data-id="${id}" style="color: var(--danger);" aria-label="Delete court">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="font-display font-semibold text-base truncate">${escapeHtml(court.title || 'Untitled court')}</div>
+          <div class="text-sm mt-1" style="color: var(--ink-muted);">${formatPrice(court.price)} / hour</div>
+          ${formatCourtHours(court) ? `
+          <div class="flex items-center gap-1.5 mt-2 text-xs font-medium" style="color: var(--ink-muted);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+            <span>${formatCourtHours(court)}</span>
+          </div>` : ''}
+        </div>
+      `).join('');
+
+      courtsGrid.querySelectorAll('.court-edit-btn').forEach((btn) => {
+        btn.addEventListener('click', () => openCourtModal(btn.dataset.id, courtsObj[btn.dataset.id]));
+      });
+      courtsGrid.querySelectorAll('.court-delete-btn').forEach((btn) => {
+        btn.addEventListener('click', () => deleteCourt(btn.dataset.id, courtsObj[btn.dataset.id]));
+      });
+      if (typeof renderSchedGrid === 'function') renderSchedGrid();
+    }
+
+    function loadCourts() {
+      if (courtsLoaded) return;
+      courtsLoaded = true;
+      onValue(courtsRef, (snap) => {
+        renderCourts(snap.exists() ? snap.val() : {});
+      }, (err) => {
+        console.error('Failed to load courts:', err);
+        courtsGrid.innerHTML = `<p class="text-sm text-center py-4 col-span-full" style="color: var(--danger);">Couldn't load courts right now.</p>`;
+      });
+    }
+
+    function openCourtModal(id, court) {
+      editingCourtId = id || null;
+      courtModalTitle.textContent = id ? 'Edit court' : 'Add court';
+      courtModalSaveBtn.textContent = id ? 'Save changes' : 'Save court';
+      courtTitleInput.value = court ? (court.title || '') : '';
+      courtPriceInput.value = court ? (court.price ?? '') : '';
+      courtOpenInput.value = court ? (court.openTime || '') : '';
+      courtCloseInput.value = court ? (court.closeTime || '') : '';
+      courtOpen24Input.checked = !!(court && court.is24Hours);
+      setHoursFieldsDisabled(courtOpen24Input.checked);
+      courtFormError.classList.add('hidden');
+      courtModalBackdrop.classList.remove('hidden');
+      setTimeout(() => courtTitleInput.focus(), 50);
+    }
+    function closeCourtModal() {
+      courtModalBackdrop.classList.add('hidden');
+      courtForm.reset();
+      setHoursFieldsDisabled(false);
+      editingCourtId = null;
+    }
+
+    addCourtBtn.addEventListener('click', () => openCourtModal(null, null));
+    courtModalCancelBtn.addEventListener('click', closeCourtModal);
+    courtModalBackdrop.addEventListener('click', (e) => { if (e.target === courtModalBackdrop) closeCourtModal(); });
+
+    courtForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = courtTitleInput.value.trim();
+      const price = parseFloat(courtPriceInput.value);
+      const is24Hours = courtOpen24Input.checked;
+      const openTime = is24Hours ? null : courtOpenInput.value;
+      const closeTime = is24Hours ? null : courtCloseInput.value;
+      if (!title || isNaN(price) || price < 0) {
+        courtFormError.textContent = 'Enter a court title and a valid price.';
+        courtFormError.classList.remove('hidden');
+        return;
+      }
+      if (!is24Hours && (!openTime || !closeTime)) {
+        courtFormError.textContent = 'Set both an opening and closing time, or mark the court as open 24 hours.';
+        courtFormError.classList.remove('hidden');
+        return;
+      }
+      // Equal open/close times (and not 24-hour) would mean a zero-length day — reject that,
+      // but allow closeTime < openTime as a valid overnight range (e.g. 6 AM – 3 AM the next day).
+      if (!is24Hours && closeTime === openTime) {
+        courtFormError.textContent = 'Opening and closing time cannot be the same.';
+        courtFormError.classList.remove('hidden');
+        return;
+      }
+      courtModalSaveBtn.disabled = true;
+      courtModalSaveBtn.textContent = 'Saving…';
+      try {
+        const payload = { title, price, is24Hours, openTime, closeTime };
+        if (editingCourtId) {
+          await update(ref(db, 'courts/' + editingCourtId), { ...payload, updatedAt: Date.now() });
+        } else {
+          const newRef = push(courtsRef);
+          await set(newRef, { ...payload, createdAt: Date.now(), updatedAt: Date.now() });
+        }
+        closeCourtModal();
+      } catch (err) {
+        console.error('Failed to save court:', err);
+        courtFormError.textContent = "Couldn't save this court. Please try again.";
+        courtFormError.classList.remove('hidden');
+      } finally {
+        courtModalSaveBtn.disabled = false;
+        courtModalSaveBtn.textContent = editingCourtId ? 'Save changes' : 'Save court';
+      }
+    });
+
+    const deleteCourtModalBackdrop = document.getElementById('deleteCourtModalBackdrop');
+    const deleteCourtNameTarget = document.getElementById('deleteCourtNameTarget');
+    const deleteCourtConfirmInput = document.getElementById('deleteCourtConfirmInput');
+    const deleteCourtCancelBtn = document.getElementById('deleteCourtCancelBtn');
+    const deleteCourtConfirmBtn = document.getElementById('deleteCourtConfirmBtn');
+    let deletingCourtId = null;
+    let deletingCourtName = '';
+
+    function deleteCourt(id, court) {
+      deletingCourtId = id;
+      deletingCourtName = (court && court.title) || 'this court';
+      deleteCourtNameTarget.textContent = deletingCourtName;
+      deleteCourtConfirmInput.value = '';
+      deleteCourtConfirmBtn.disabled = true;
+      deleteCourtConfirmBtn.textContent = 'Delete court';
+      deleteCourtModalBackdrop.classList.remove('hidden');
+      setTimeout(() => deleteCourtConfirmInput.focus(), 50);
+    }
+
+    function closeDeleteCourtModal() {
+      deleteCourtModalBackdrop.classList.add('hidden');
+      deletingCourtId = null;
+      deletingCourtName = '';
+    }
+
+    deleteCourtConfirmInput.addEventListener('input', () => {
+      deleteCourtConfirmBtn.disabled = deleteCourtConfirmInput.value.trim() !== deletingCourtName;
+    });
+    deleteCourtCancelBtn.addEventListener('click', closeDeleteCourtModal);
+    deleteCourtModalBackdrop.addEventListener('click', (e) => { if (e.target === deleteCourtModalBackdrop) closeDeleteCourtModal(); });
+
+    deleteCourtConfirmBtn.addEventListener('click', async () => {
+      if (deleteCourtConfirmInput.value.trim() !== deletingCourtName || !deletingCourtId) return;
+      deleteCourtConfirmBtn.disabled = true;
+      deleteCourtConfirmBtn.textContent = 'Deleting…';
+      try {
+        await remove(ref(db, 'courts/' + deletingCourtId));
+        closeDeleteCourtModal();
+      } catch (err) {
+        console.error('Failed to delete court:', err);
+        deleteCourtConfirmBtn.disabled = false;
+        deleteCourtConfirmBtn.textContent = 'Delete court';
+        alert("Couldn't delete this court. Please try again.");
+      }
+    });
+
+    // ---------------------------------------------------------------
+    // Booking window setting (how far ahead a booking can be made)
+    // ---------------------------------------------------------------
+    const bookingWindowSettingRef = ref(db, 'settings/bookingWindowDays');
+    const bookingWindowInput = document.getElementById('bookingWindowInput');
+    const saveBookingWindowBtn = document.getElementById('saveBookingWindowBtn');
+    const bookingWindowSaved = document.getElementById('bookingWindowSaved');
+    const bookingWindowNoticeDays = document.getElementById('bookingWindowNoticeDays');
+    let bookingWindowDays = 7;
+    let bookingWindowLoaded = false;
+
+    function loadBookingWindowSetting() {
+      if (bookingWindowLoaded) return;
+      bookingWindowLoaded = true;
+      onValue(bookingWindowSettingRef, (snap) => {
+        bookingWindowDays = snap.exists() ? Number(snap.val()) : 7;
+        if (!bookingWindowDays || bookingWindowDays < 1) bookingWindowDays = 7;
+        bookingWindowInput.value = bookingWindowDays;
+        bookingWindowNoticeDays.textContent = bookingWindowDays;
+        updateBookingDateBounds();
+      });
+    }
+
+    saveBookingWindowBtn.addEventListener('click', async () => {
+      const days = parseInt(bookingWindowInput.value, 10);
+      if (!days || days < 1) return;
+      saveBookingWindowBtn.disabled = true;
+      saveBookingWindowBtn.textContent = 'Saving…';
+      try {
+        await set(bookingWindowSettingRef, days);
+        bookingWindowSaved.classList.remove('hidden');
+        setTimeout(() => bookingWindowSaved.classList.add('hidden'), 2500);
+      } catch (err) {
+        console.error('Failed to save booking window:', err);
+      } finally {
+        saveBookingWindowBtn.disabled = false;
+        saveBookingWindowBtn.textContent = 'Save';
+      }
+    });
+
+    function todayIso() {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 10);
+    }
+    function addDaysIso(iso, days) {
+      const d = new Date(iso + 'T00:00:00');
+      d.setDate(d.getDate() + days);
+      return d.toISOString().slice(0, 10);
+    }
+    function formatDateLabel(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    function formatDateLabelShort(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function updateBookingDateBounds() {
+      const min = todayIso();
+      const max = addDaysIso(min, bookingWindowDays - 1);
+      const notice = document.getElementById('schedAvailabilityNotice');
+      if (notice) notice.textContent = `Bookings are available until ${formatDateLabel(max)}.`;
+      // Clamp the schedule's selected date into the new window.
+      if (schedDate && (schedDate < min || schedDate > max)) setSchedDate(min);
+    }
+
+    // ---------------------------------------------------------------
+    // Bookings (live, admin-editable — pushed to the realtime database)
+    // ---------------------------------------------------------------
+    const bookingsRef = ref(db, 'bookings');
+    const bookingsTableBody = document.getElementById('bookingsTableBody');
+    const bookingsEmpty = document.getElementById('bookingsEmpty');
+    const addBookingBtn = document.getElementById('addBookingBtn');
+    const bookingModalBackdrop = document.getElementById('bookingModalBackdrop');
+    const bookingModalTitle = document.getElementById('bookingModalTitle');
+    const bookingForm = document.getElementById('bookingForm');
+    const bookingCustomerInput = document.getElementById('bookingCustomerInput');
+    const bookingEmailInput = document.getElementById('bookingEmailInput');
+    const bookingPhoneInput = document.getElementById('bookingPhoneInput');
+    const bookingCustomerSelect = document.getElementById('bookingCustomerSelect');
+    const custExistingPreview = document.getElementById('custExistingPreview');
+    const custExistingFields = document.getElementById('custExistingFields');
+    const custNewFields = document.getElementById('custNewFields');
+    const custTypeExistingBtn = document.getElementById('custTypeExistingBtn');
+    const custTypeNewBtn = document.getElementById('custTypeNewBtn');
+    const bookingFormError = document.getElementById('bookingFormError');
+    const bookingModalCancelBtn = document.getElementById('bookingModalCancelBtn');
+    const bookingModalSaveBtn = document.getElementById('bookingModalSaveBtn');
+
+    let bookingsLoaded = false;
+    let editingBookingId = null;
+    let currentBookingsData = {};
+    let customerMode = 'existing'; // 'existing' | 'new'
+
+    function minutesOf(hhmm) {
+      const [h, m] = hhmm.split(':').map(Number);
+      return h * 60 + m;
+    }
+    function hhmmOfMinutes(mins) {
+      const wrapped = ((mins % 1440) + 1440) % 1440;
+      const h = Math.floor(wrapped / 60);
+      const m = wrapped % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    }
+
+    function bookingsOverlap(aStart, aEnd, bStart, bEnd) {
+      return minutesOf(aStart) < minutesOf(bEnd) && minutesOf(bStart) < minutesOf(aEnd);
+    }
+
+    // ---------------------------------------------------------------
+    // Customer type toggle (existing vs. new) inside the booking modal
+    // ---------------------------------------------------------------
+    function setCustomerMode(mode) {
+      customerMode = mode;
+      custTypeExistingBtn.classList.toggle('active', mode === 'existing');
+      custTypeNewBtn.classList.toggle('active', mode === 'new');
+      custExistingFields.classList.toggle('hidden', mode !== 'existing');
+      custNewFields.classList.toggle('hidden', mode !== 'new');
+      bookingFormError.classList.add('hidden');
+    }
+    custTypeExistingBtn.addEventListener('click', () => setCustomerMode('existing'));
+    custTypeNewBtn.addEventListener('click', () => setCustomerMode('new'));
+
+    function renderCustomerSelect(preserveId) {
+      const prev = preserveId !== undefined ? preserveId : bookingCustomerSelect.value;
+      const customers = Object.entries(currentCustomersData || {})
+        .filter(([, c]) => c && c.role !== 'admin')
+        .sort((a, b) => (a[1].fullName || '').localeCompare(b[1].fullName || ''));
+      bookingCustomerSelect.innerHTML = '<option value="">Select a customer…</option>' +
+        customers.map(([id, c]) => `<option value="${id}">${escapeHtml(c.fullName || 'Unnamed')}${c.email ? ' — ' + escapeHtml(c.email) : ''}</option>`).join('');
+      if (prev && currentCustomersData[prev]) bookingCustomerSelect.value = prev;
+      updateCustomerPreview();
+    }
+
+    function updateCustomerPreview() {
+      const id = bookingCustomerSelect.value;
+      const c = id ? currentCustomersData[id] : null;
+      if (!c) { custExistingPreview.classList.add('hidden'); custExistingPreview.innerHTML = ''; return; }
+      custExistingPreview.classList.remove('hidden');
+      custExistingPreview.innerHTML = `
+        <div><span class="font-semibold" style="color: var(--ink);">${escapeHtml(c.fullName || 'Unnamed')}</span></div>
+        <div>${escapeHtml(c.email || 'No email on file')}</div>
+        <div>${escapeHtml(c.phone || 'No phone on file')}</div>
+      `;
+    }
+    bookingCustomerSelect.addEventListener('change', updateCustomerPreview);
+
+    function renderBookings(bookingsObj) {
+      currentBookingsData = bookingsObj || {};
+      const entries = Object.entries(bookingsObj || {}).sort((a, b) => {
+        const dateCompare = (a[1].date || '').localeCompare(b[1].date || '');
+        if (dateCompare !== 0) return dateCompare;
+        return (a[1].startTime || '').localeCompare(b[1].startTime || '');
+      });
+
+      bookingsTableBody.parentElement.parentElement.parentElement.classList.toggle('hidden', entries.length === 0);
+      bookingsEmpty.classList.toggle('hidden', entries.length !== 0);
+
+      if (entries.length === 0) {
+        bookingsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-sm" style="color: var(--ink-muted);">No bookings yet.</td></tr>`;
+      } else {
+        bookingsTableBody.innerHTML = entries.map(([id, b]) => `
+          <tr>
+            <td class="font-medium">${escapeHtml(b.courtTitle || 'Court')}</td>
+            <td>
+              <div>${escapeHtml(b.customerName || 'Unnamed')}</div>
+              ${b.phone ? `<div class="text-xs" style="color: var(--ink-muted);">${escapeHtml(b.phone)}</div>` : ''}
+            </td>
+            <td style="color: var(--ink-muted);">${formatDateLabel(b.date)}</td>
+            <td style="color: var(--ink-muted);">${formatTime12h(b.startTime)} – ${formatTime12h(b.endTime)}</td>
+            <td style="color: var(--ink-muted);">${formatPrice(b.price)}</td>
+            <td>
+              <div class="flex items-center justify-end gap-1">
+                <button class="icon-btn w-8 h-8 rounded-full grid place-items-center booking-edit-btn" data-id="${id}" style="color: var(--ink-muted);" aria-label="Edit booking">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </button>
+                <button class="icon-btn w-8 h-8 rounded-full grid place-items-center booking-delete-btn" data-id="${id}" style="color: var(--danger);" aria-label="Delete booking">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      bookingsTableBody.querySelectorAll('.booking-edit-btn').forEach((btn) => {
+        btn.addEventListener('click', () => openBookingModal(btn.dataset.id, bookingsObj[btn.dataset.id]));
+      });
+      bookingsTableBody.querySelectorAll('.booking-delete-btn').forEach((btn) => {
+        btn.addEventListener('click', () => deleteBooking(btn.dataset.id, bookingsObj[btn.dataset.id]));
+      });
+
+      // Keep the overview's "Bookings today" and "Revenue today" cards live too.
+      const today = todayIso();
+      const todaysBookings = entries.filter(([, b]) => b.date === today);
+      const revenueToday = todaysBookings.reduce((sum, [, b]) => sum + (Number(b.price) || 0), 0);
+      const statBookingsToday = document.getElementById('statBookingsToday');
+      const statRevenue = document.getElementById('statRevenue');
+      if (statBookingsToday) statBookingsToday.textContent = todaysBookings.length.toLocaleString();
+      if (statRevenue) statRevenue.textContent = formatPrice(revenueToday);
+
+      if (typeof renderSchedGrid === 'function') renderSchedGrid();
+    }
+
+    function loadBookings() {
+      if (bookingsLoaded) return;
+      bookingsLoaded = true;
+      onValue(bookingsRef, (snap) => {
+        renderBookings(snap.exists() ? snap.val() : {});
+      }, (err) => {
+        console.error('Failed to load bookings:', err);
+        bookingsTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-sm" style="color: var(--danger);">Couldn't load bookings right now.</td></tr>`;
+      });
+    }
+
+    // ---------------------------------------------------------------
+    // Booking schedule grid (right side stays static; date now comes
+    // from the calendar picker modal below)
+    // ---------------------------------------------------------------
+    const schedDateBtn = document.getElementById('schedDateBtn');
+    const schedDateLabel = document.getElementById('schedDateLabel');
+    const schedTableHead = document.getElementById('schedTableHead');
+    const schedTableBody = document.getElementById('schedTableBody');
+    const schedHint = document.getElementById('schedHint');
+
+    const SLOT_MINUTES = 60;
+    let schedDate = todayIso();          // the "anchor" date shown at the top of the grid
+    let schedSelection = null;           // { courtId, date, startTime, endTime } for the in-progress selection
+
+    function setSchedDate(iso) {
+      const min = todayIso();
+      const max = addDaysIso(min, bookingWindowDays - 1);
+      if (iso < min) iso = min;
+      if (iso > max) iso = max;
+      schedDate = iso;
+      schedDateLabel.textContent = formatDateLabelShort(iso);
+      schedSelection = null;
+      renderSchedGrid();
+    }
+
+    // Builds the list of hourly rows to display, covering every court's operating
+    // hours for `schedDate`. A court open past midnight extends rows onto the next
+    // calendar day; is24Hours courts contribute the full 0–1440 range.
+    function buildSchedRows() {
+      const courts = Object.entries(currentCourtsData || {});
+      if (courts.length === 0) return { rows: [], minStart: 0, maxEnd: 0 };
+      let minStart = Infinity;
+      let maxEnd = -Infinity;
+      courts.forEach(([, court]) => {
+        let start, end;
+        if (court.is24Hours) { start = 0; end = 1440; }
+        else if (court.openTime && court.closeTime) {
+          start = minutesOf(court.openTime);
+          end = minutesOf(court.closeTime);
+          if (end <= start) end += 1440; // overnight — closes the next day
+        } else { return; }
+        if (start < minStart) minStart = start;
+        if (end > maxEnd) maxEnd = end;
+      });
+      if (!isFinite(minStart)) return { rows: [], minStart: 0, maxEnd: 0 };
+      // Snap to whole hours and cap the grid at 36h so a misconfigured court can't blow it up.
+      minStart = Math.floor(minStart / SLOT_MINUTES) * SLOT_MINUTES;
+      maxEnd = Math.min(Math.ceil(maxEnd / SLOT_MINUTES) * SLOT_MINUTES, minStart + 36 * 60);
+      const rows = [];
+      for (let m = minStart; m < maxEnd; m += SLOT_MINUTES) rows.push(m);
+      return { rows, minStart, maxEnd };
+    }
+
+    function courtCoversMinute(court, minuteOfDayFromStart) {
+      // minuteOfDayFromStart is relative to schedDate's midnight (can exceed 1440 for next-day rows).
+      if (court.is24Hours) return true;
+      if (!court.openTime || !court.closeTime) return false;
+      let start = minutesOf(court.openTime);
+      let end = minutesOf(court.closeTime);
+      if (end <= start) end += 1440;
+      return minuteOfDayFromStart >= start && minuteOfDayFromStart < end;
+    }
+
+    function slotDateAndTime(rowMinute) {
+      // Returns { date, time } for a row, rolling onto the next calendar day when rowMinute >= 1440.
+      if (rowMinute >= 1440) return { date: addDaysIso(schedDate, 1), time: hhmmOfMinutes(rowMinute) };
+      return { date: schedDate, time: hhmmOfMinutes(rowMinute) };
+    }
+
+    function findBookingFor(courtId, date, time) {
+      const startMin = minutesOf(time);
+      const endMin = startMin + SLOT_MINUTES;
+      return Object.entries(currentBookingsData || {}).find(([id, b]) =>
+        b.courtId === courtId && b.date === date && bookingsOverlap(time, hhmmOfMinutes(endMin), b.startTime, b.endTime)
+      );
+    }
+
+    function renderSchedGrid() {
+      if (!schedTableHead || !schedTableBody) return;
+      const courts = Object.entries(currentCourtsData || {}).sort((a, b) => (a[1].createdAt || 0) - (b[1].createdAt || 0));
+      if (!schedDate) schedDate = todayIso();
+
+      if (courts.length === 0) {
+        schedTableHead.innerHTML = '';
+        schedTableBody.innerHTML = `<tr><td class="text-center py-8 text-sm" style="color: var(--ink-muted);">Add a court first to see availability here.</td></tr>`;
+        return;
+      }
+
+      schedTableHead.innerHTML = `<tr><th style="min-width:90px;">Time</th>${courts.map(([, c]) => `<th style="min-width:120px;">${escapeHtml(c.title || 'Court')}</th>`).join('')}</tr>`;
+
+      const { rows } = buildSchedRows();
+      if (rows.length === 0) {
+        schedTableBody.innerHTML = `<tr><td colspan="${courts.length + 1}" class="text-center py-8 text-sm" style="color: var(--ink-muted);">Set opening hours on your courts to see availability here.</td></tr>`;
+        return;
+      }
+
+      let html = '';
+      let dividerShown = false;
+      rows.forEach((rowMinute) => {
+        if (!dividerShown && rowMinute >= 1440) {
+          const nextDayLabel = formatDateLabel(addDaysIso(schedDate, 1));
+          html += `<tr class="sched-divider-row"><td colspan="${courts.length + 1}">
+            <div class="sched-divider-line"><span class="sched-divider-pill">Next day · ${nextDayLabel}</span></div>
+          </td></tr>`;
+          dividerShown = true;
+        }
+        const { date: rowDate, time: rowTime } = slotDateAndTime(rowMinute);
+        const label = `${formatTime12h(rowTime)} – ${formatTime12h(hhmmOfMinutes(rowMinute + SLOT_MINUTES))}`;
+        html += `<tr><td class="sched-time-cell">${label}</td>`;
+        courts.forEach(([courtId, court]) => {
+          const covers = courtCoversMinute(court, rowMinute);
+          if (!covers) { html += `<td><div class="sched-slot is-closed"></div></td>`; return; }
+          const existing = findBookingFor(courtId, rowDate, rowTime);
+          const isOwnBooking = existing && editingBookingId && existing[0] === editingBookingId;
+          const isSelected = schedSelection && schedSelection.courtId === courtId &&
+            rowMinute >= schedSelection.startRow && rowMinute < schedSelection.endRow &&
+            schedSelection.anchorDate === schedDate;
+          let cls = 'is-open', text = 'Open';
+          // Slots that already have a booking are locked out here (data-bookable="0"),
+          // so the same court/time can never be double-booked from this grid.
+          if (existing && !isOwnBooking) { cls = 'is-booked'; text = 'Booked'; }
+          else if (isOwnBooking) { cls = 'is-mine'; text = 'Yours'; }
+          if (isSelected) { cls = 'is-selected'; text = 'Selected'; }
+          html += `<td><div class="sched-slot ${cls}" data-court-id="${courtId}" data-row-minute="${rowMinute}" data-bookable="${(!existing || isOwnBooking) ? '1' : '0'}">${text}</div></td>`;
+        });
+        html += `</tr>`;
+      });
+      schedTableBody.innerHTML = html;
+
+      schedTableBody.querySelectorAll('.sched-slot[data-bookable="1"]').forEach((el) => {
+        el.addEventListener('click', () => handleSlotClick(el));
+      });
+    }
+
+    function handleSlotClick(el) {
+      const courtId = el.dataset.courtId;
+      const rowMinute = Number(el.dataset.rowMinute);
+
+      if (!schedSelection || schedSelection.courtId !== courtId || schedSelection.anchorDate !== schedDate) {
+        // Starting a fresh selection.
+        schedSelection = { courtId, anchorDate: schedDate, startRow: rowMinute, endRow: rowMinute + SLOT_MINUTES };
+      } else if (rowMinute + SLOT_MINUTES === schedSelection.endRow && rowMinute === schedSelection.startRow) {
+        // Clicked the only selected slot again — clear it.
+        schedSelection = null;
+      } else if (rowMinute >= schedSelection.startRow) {
+        // Extend the range to include this slot.
+        schedSelection.endRow = rowMinute + SLOT_MINUTES;
+      } else {
+        // Clicked before the anchor — move the start back.
+        schedSelection.startRow = rowMinute;
+      }
+
+      // A selected range must be contiguous open slots only — verify and trim if a booked
+      // slot got included when extending across it. This is what keeps double-bookings
+      // impossible: any already-booked slot always breaks the range here.
+      if (schedSelection) {
+        const court = currentCourtsData[schedSelection.courtId];
+        for (let m = schedSelection.startRow; m < schedSelection.endRow; m += SLOT_MINUTES) {
+          if (!courtCoversMinute(court, m)) { schedSelection.endRow = m; break; }
+          const { date, time } = slotDateAndTime(m);
+          const existing = findBookingFor(schedSelection.courtId, date, time);
+          if (existing && !(editingBookingId && existing[0] === editingBookingId)) {
+            schedSelection.endRow = m;
+            break;
+          }
+        }
+        if (schedSelection.endRow <= schedSelection.startRow) schedSelection = null;
+      }
+
+      renderSchedGrid();
+      updateBookingFormErrorVisibility();
+    }
+
+    function updateBookingFormErrorVisibility() {
+      if (schedSelection) bookingFormError.classList.add('hidden');
+    }
+
+    // ---------------------------------------------------------------
+    // Date picker (calendar) modal — the schedule's date can only be
+    // changed by opening this modal and choosing an available day.
+    // ---------------------------------------------------------------
+    const datePickerBackdrop = document.getElementById('datePickerBackdrop');
+    const calMonthLabel = document.getElementById('calMonthLabel');
+    const calGrid = document.getElementById('calGrid');
+    const calPrevMonthBtn = document.getElementById('calPrevMonthBtn');
+    const calNextMonthBtn = document.getElementById('calNextMonthBtn');
+    const calCancelBtn = document.getElementById('calCancelBtn');
+    const calAvailabilityNotice = document.getElementById('calAvailabilityNotice');
+    let calViewYear = 0;
+    let calViewMonth = 0; // 0-11
+
+    function openDatePicker() {
+      const anchor = new Date((schedDate || todayIso()) + 'T00:00:00');
+      calViewYear = anchor.getFullYear();
+      calViewMonth = anchor.getMonth();
+      renderCalendar();
+      datePickerBackdrop.classList.remove('hidden');
+    }
+    function closeDatePicker() { datePickerBackdrop.classList.add('hidden'); }
+    schedDateBtn.addEventListener('click', openDatePicker);
+    calCancelBtn.addEventListener('click', closeDatePicker);
+    datePickerBackdrop.addEventListener('click', (e) => { if (e.target === datePickerBackdrop) closeDatePicker(); });
+
+    function isoOf(y, m, d) {
+      const mm = String(m + 1).padStart(2, '0');
+      const dd = String(d).padStart(2, '0');
+      return `${y}-${mm}-${dd}`;
+    }
+
+    function renderCalendar() {
+      const min = todayIso();
+      const max = addDaysIso(min, bookingWindowDays - 1);
+      const monthStart = new Date(calViewYear, calViewMonth, 1);
+      calMonthLabel.textContent = monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      calAvailabilityNotice.textContent = `Available up to ${formatDateLabel(max)}.`;
+
+      const firstWeekday = monthStart.getDay(); // 0 = Sun
+      const daysInMonth = new Date(calViewYear, calViewMonth + 1, 0).getDate();
+
+      let html = '';
+      for (let i = 0; i < firstWeekday; i++) html += `<div></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const iso = isoOf(calViewYear, calViewMonth, d);
+        const available = iso >= min && iso <= max;
+        const isSelected = iso === schedDate;
+        const isToday = iso === min;
+        const cls = ['cal-day', available ? 'is-available' : 'is-disabled', isSelected ? 'is-selected' : '', isToday ? 'is-today' : ''].filter(Boolean).join(' ');
+        html += `<div class="${cls}" data-iso="${iso}" data-available="${available ? '1' : '0'}">${d}</div>`;
+      }
+      calGrid.innerHTML = html;
+
+      // Disable stepping to a month that's entirely outside the booking window.
+      const minMonthStart = new Date(min + 'T00:00:00');
+      const maxMonthStart = new Date(max + 'T00:00:00');
+      calPrevMonthBtn.disabled = calViewYear === minMonthStart.getFullYear() && calViewMonth === minMonthStart.getMonth();
+      calNextMonthBtn.disabled = calViewYear === maxMonthStart.getFullYear() && calViewMonth === maxMonthStart.getMonth();
+
+      calGrid.querySelectorAll('.cal-day[data-available="1"]').forEach((el) => {
+        el.addEventListener('click', () => {
+          setSchedDate(el.dataset.iso);
+          closeDatePicker();
+        });
+      });
+    }
+    calPrevMonthBtn.addEventListener('click', () => {
+      calViewMonth -= 1;
+      if (calViewMonth < 0) { calViewMonth = 11; calViewYear -= 1; }
+      renderCalendar();
+    });
+    calNextMonthBtn.addEventListener('click', () => {
+      calViewMonth += 1;
+      if (calViewMonth > 11) { calViewMonth = 0; calViewYear += 1; }
+      renderCalendar();
+    });
+
+    function openBookingModal(id, booking) {
+      editingBookingId = id || null;
+      bookingModalTitle.textContent = id ? 'Edit booking' : 'Add booking';
+      bookingModalSaveBtn.textContent = id ? 'Save changes' : 'Save booking';
+
+      renderCustomerSelect('');
+      if (booking) {
+        if (booking.customerId && currentCustomersData[booking.customerId]) {
+          setCustomerMode('existing');
+          renderCustomerSelect(booking.customerId);
+        } else {
+          setCustomerMode('new');
+          bookingCustomerInput.value = booking.customerName || '';
+          bookingEmailInput.value = booking.email || '';
+          bookingPhoneInput.value = booking.phone || '';
+        }
+      } else {
+        setCustomerMode('existing');
+        bookingCustomerInput.value = '';
+        bookingEmailInput.value = '';
+        bookingPhoneInput.value = '';
+      }
+
+      if (booking) {
+        setSchedDate(booking.date);
+        schedSelection = {
+          courtId: booking.courtId,
+          anchorDate: booking.date,
+          startRow: minutesOf(booking.startTime),
+          endRow: minutesOf(booking.endTime) > minutesOf(booking.startTime)
+            ? minutesOf(booking.endTime)
+            : minutesOf(booking.endTime) + 1440,
+        };
+      } else {
+        setSchedDate(schedDate || todayIso());
+      }
+      renderSchedGrid();
+
+      bookingFormError.classList.add('hidden');
+      bookingModalBackdrop.classList.remove('hidden');
+    }
+    function closeBookingModal() {
+      bookingModalBackdrop.classList.add('hidden');
+      bookingForm.reset();
+      editingBookingId = null;
+      schedSelection = null;
+    }
+
+    addBookingBtn.addEventListener('click', () => {
+      if (Object.keys(currentCourtsData).length === 0) {
+        alert('Add a court first before creating a booking.');
+        return;
+      }
+      openBookingModal(null, null);
+    });
+    bookingModalCancelBtn.addEventListener('click', closeBookingModal);
+    bookingModalBackdrop.addEventListener('click', (e) => { if (e.target === bookingModalBackdrop) closeBookingModal(); });
+
+    bookingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const showError = (msg) => { bookingFormError.textContent = msg; bookingFormError.classList.remove('hidden'); };
+
+      // Resolve the customer from either the existing-customer dropdown or the new-customer fields.
+      let customerId = null, customerName = '', email = '', phone = '';
+      if (customerMode === 'existing') {
+        customerId = bookingCustomerSelect.value;
+        const c = customerId ? currentCustomersData[customerId] : null;
+        if (!c) return showError('Choose an existing customer, or switch to "New customer".');
+        customerName = c.fullName || 'Unnamed';
+        email = c.email || '';
+        phone = c.phone || '';
+      } else {
+        customerName = bookingCustomerInput.value.trim();
+        email = bookingEmailInput.value.trim();
+        phone = bookingPhoneInput.value.trim();
+        if (!customerName) return showError('Enter the customer\'s full name.');
+      }
+
+      if (!schedSelection) return showError('Tap an open slot on the schedule to choose a time.');
+
+      const { courtId, startRow, endRow } = schedSelection;
+      const court = currentCourtsData[courtId];
+      if (!court) return showError('Choose a court on the schedule.');
+
+      const startInfo = slotDateAndTime(startRow);
+      const date = startInfo.date;
+      const startTime = startInfo.time;
+      const endTime = hhmmOfMinutes(endRow);
+      // If the range crosses into the next calendar day, the booking's own date stays the start date;
+      // Firebase stores start/end as times-of-day, with endTime possibly "past midnight" (e.g. 02:00).
+
+      // Final double-booking guard, re-checked right before writing (in addition to the grid
+      // already hiding booked slots from being selectable at all).
+      const overlap = Object.entries(currentBookingsData).some(([id, b]) =>
+        id !== editingBookingId && b.courtId === courtId && b.date === date && bookingsOverlap(startTime, endTime === '00:00' ? '24:00' : endTime, b.startTime, b.endTime === '00:00' ? '24:00' : b.endTime)
+      );
+      if (overlap) return showError('This court is already booked for part of that time.');
+
+      const hours = (endRow - startRow) / 60;
+      const price = Math.round((Number(court.price) || 0) * hours * 100) / 100;
+
+      bookingModalSaveBtn.disabled = true;
+      bookingModalSaveBtn.textContent = 'Saving…';
+      try {
+        const payload = { courtId, courtTitle: court.title || 'Court', customerId, customerName, email, phone, date, startTime, endTime, price };
+        if (editingBookingId) {
+          await update(ref(db, 'bookings/' + editingBookingId), { ...payload, updatedAt: Date.now() });
+        } else {
+          const newRef = push(bookingsRef);
+          await set(newRef, { ...payload, createdAt: Date.now(), updatedAt: Date.now() });
+        }
+        closeBookingModal();
+      } catch (err) {
+        console.error('Failed to save booking:', err);
+        showError("Couldn't save this booking. Please try again.");
+      } finally {
+        bookingModalSaveBtn.disabled = false;
+        bookingModalSaveBtn.textContent = editingBookingId ? 'Save changes' : 'Save booking';
+      }
+    });
+
+    const deleteBookingModalBackdrop = document.getElementById('deleteBookingModalBackdrop');
+    const deleteBookingText = document.getElementById('deleteBookingText');
+    const deleteBookingCancelBtn = document.getElementById('deleteBookingCancelBtn');
+    const deleteBookingConfirmBtn = document.getElementById('deleteBookingConfirmBtn');
+    let deletingBookingId = null;
+
+    function deleteBooking(id, booking) {
+      deletingBookingId = id;
+      const label = booking ? `${booking.courtTitle || 'this court'} on ${formatDateLabel(booking.date)}` : 'this booking';
+      deleteBookingText.textContent = `Delete the booking for ${label}? This can't be undone.`;
+      deleteBookingConfirmBtn.disabled = false;
+      deleteBookingConfirmBtn.textContent = 'Delete booking';
+      deleteBookingModalBackdrop.classList.remove('hidden');
+    }
+    function closeDeleteBookingModal() {
+      deleteBookingModalBackdrop.classList.add('hidden');
+      deletingBookingId = null;
+    }
+    deleteBookingCancelBtn.addEventListener('click', closeDeleteBookingModal);
+    deleteBookingModalBackdrop.addEventListener('click', (e) => { if (e.target === deleteBookingModalBackdrop) closeDeleteBookingModal(); });
+    deleteBookingConfirmBtn.addEventListener('click', async () => {
+      if (!deletingBookingId) return;
+      deleteBookingConfirmBtn.disabled = true;
+      deleteBookingConfirmBtn.textContent = 'Deleting…';
+      try {
+        await remove(ref(db, 'bookings/' + deletingBookingId));
+        closeDeleteBookingModal();
+      } catch (err) {
+        console.error('Failed to delete booking:', err);
+        deleteBookingConfirmBtn.disabled = false;
+        deleteBookingConfirmBtn.textContent = 'Delete booking';
+        alert("Couldn't delete this booking. Please try again.");
+      }
+    });
 
     // ---------------------------------------------------------------
     // Guided onboarding tour
