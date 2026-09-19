@@ -711,11 +711,23 @@ const FIREBASE_VERSION = '11.10.0';
 const FALLBACK_NEXT = '../book/';        // where to go after login if no ?next= is given
 const REMEMBER_KEY = 'tcc-remember-email';
 const HINT_KEY = 'tcc-signed-in';        // harmless hint the landing page reads (not security)
+const ROLE_TIMEOUT_MS = 3500;            // how long to wait for the role lookup before assuming "customer"
+const AUTH_TIMEOUT_MS = 15000;           // how long to wait for sign-in/sign-up itself before giving up
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const root = document.documentElement;
 const noMotion = root.classList.contains('no-motion');
+
+/* A promise that rejects after ms milliseconds, so any await can be
+   capped instead of hanging forever on a slow or stuck connection. */
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => { const e = new Error((label || 'operation') + ' timed out'); e.code = 'app/timeout'; reject(e); }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 /* ------------------------------------------------------------------
    Firebase loads in the background. If it can't load (offline, blocked),
@@ -733,7 +745,11 @@ const fbReady = (async () => {
       import(base + 'firebase-database.js')
     ]);
     const app = appM.initializeApp(firebaseConfig);
-    /* initializeAuth (not getAuth) keeps the popup/redirect iframe out of the page */
+    /* initializeAuth (not getAuth) keeps the popup/redirect iframe out of the page.
+       This already remembers the session across browser restarts by default
+       (indexedDB, falling back to local, falling back to session), which is
+       exactly what "Remember me" checked wants — see the login handler below,
+       which only calls setPersistence again when the box is UNchecked. */
     const auth = authM.initializeAuth(app, {
       persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.browserSessionPersistence]
     });
@@ -769,19 +785,34 @@ const ROLE_PATHS = { admin: '../pages/admin/dashboard.html', customer: '../' };
 /* Look up the signed-in user's role and send them to the matching dashboard.
    A caller that already knows the role (e.g. right after signup) can pass it
    in to skip the extra database read. An explicit ?next= always wins, so
-   deep links (like a specific booking page) keep working as before. */
+   deep links (like a specific booking page) keep working as before.
+
+   The role read is capped at ROLE_TIMEOUT_MS: a slow or stuck connection
+   right after signing in should never leave someone staring at a spinner —
+   it falls back to "customer" and moves on. Worst case, an admin account
+   on a very slow connection lands on the customer home instead of their
+   dashboard and can navigate from there, rather than being stuck. */
 async function goNext(f, uid, knownRole) {
   let role = knownRole;
   if (!role) {
     role = 'customer';
     try {
-      const snap = await f.dbM.get(f.dbM.ref(f.db, 'customer_data/' + uid + '/role'));
+      const snap = await withTimeout(
+        f.dbM.get(f.dbM.ref(f.db, 'customer_data/' + uid + '/role')),
+        ROLE_TIMEOUT_MS,
+        'role lookup'
+      );
       if (snap.exists() && snap.val()) role = snap.val();
     } catch (err) {
-      console.error('Could not read the account role, defaulting to customer.', err);
+      if (err && err.code === 'app/timeout') {
+        console.warn('Role lookup timed out after ' + ROLE_TIMEOUT_MS + 'ms, continuing as customer.');
+      } else {
+        console.error('Could not read the account role, defaulting to customer.', err);
+      }
     }
   }
-  const path = ROLE_PATHS[role] || ROLE_PATHS.customer;
+  /* An explicit ?next= (e.g. a booking page someone was sent back to) always wins */
+  const path = params.get('next') ? (nextUrl.pathname + nextUrl.search) : (ROLE_PATHS[role] || ROLE_PATHS.customer);
   location.replace(path);
 }
 
@@ -812,7 +843,8 @@ const ERRORS = {
   'auth/network-request-failed': 'Cannot reach the server. Check your connection and try again.',
   'auth/user-disabled': 'This account has been disabled. Contact the club for help.',
   'auth/operation-not-allowed': 'Email sign-in is not turned on yet. Enable Email/Password in the Firebase console.',
-  'app/unavailable': 'Sign-in is not available right now. Check your connection and reload the page.'
+  'app/unavailable': 'Sign-in is not available right now. Check your connection and reload the page.',
+  'app/timeout': 'This is taking longer than expected. Check your connection and try again.'
 };
 const friendly = err => ERRORS[err && err.code] || 'Something went wrong. Try again.';
 
@@ -1125,9 +1157,19 @@ VIEWS.login.form.addEventListener('submit', async e => {
   setBusy(form, true);
   try {
     const f = await needFirebase();
-    /* Remember me: keep the session across browser restarts, otherwise end it when the tab closes */
-    await f.authM.setPersistence(f.auth, remember ? f.authM.browserLocalPersistence : f.authM.browserSessionPersistence);
-    const cred = await f.authM.signInWithEmailAndPassword(f.auth, email, pw);
+    /* initializeAuth already defaults to "remember across restarts" (indexedDB
+       falling back to local persistence). So when the box IS checked we skip
+       this call entirely — one fewer indexedDB round trip before signing in.
+       We only need to explicitly downgrade to session-only persistence when
+       the box is UNchecked. */
+    if (!remember) {
+      await withTimeout(f.authM.setPersistence(f.auth, f.authM.browserSessionPersistence), 4000, 'persistence update');
+    }
+    const cred = await withTimeout(
+      f.authM.signInWithEmailAndPassword(f.auth, email, pw),
+      AUTH_TIMEOUT_MS,
+      'sign-in'
+    );
     try { remember ? localStorage.setItem(REMEMBER_KEY, email) : localStorage.removeItem(REMEMBER_KEY); } catch (err) {}
     setHint(true);
     showMsg('success', 'Logged in. Taking you to your dashboard…');
@@ -1142,8 +1184,6 @@ VIEWS.login.form.addEventListener('submit', async e => {
 /* ------------------------------------------------------------------
    Sign up (account in Firebase Auth, contact number in Realtime Database)
 ------------------------------------------------------------------ */
-const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
-
 VIEWS.signup.form.addEventListener('submit', async e => {
   e.preventDefault();
   if (busy) return;
@@ -1170,11 +1210,19 @@ VIEWS.signup.form.addEventListener('submit', async e => {
   setBusy(form, true);
   try {
     const f = await needFirebase();
-    await f.authM.setPersistence(f.auth, f.authM.browserLocalPersistence);
-    const cred = await f.authM.createUserWithEmailAndPassword(f.auth, email, pw);
+    /* New account: persistence needs to be set explicitly (there is no prior
+       session to inherit it from), so this call stays unconditional here. */
+    await withTimeout(f.authM.setPersistence(f.auth, f.authM.browserLocalPersistence), 4000, 'persistence update');
+    const cred = await withTimeout(
+      f.authM.createUserWithEmailAndPassword(f.auth, email, pw),
+      AUTH_TIMEOUT_MS,
+      'account creation'
+    );
 
     /* Save the profile. New accounts always start with the "customer" role;
-       an admin can only be promoted later from the Firebase console or an admin tool. */
+       an admin can only be promoted later from the Firebase console or an admin tool.
+       This write is best-effort and capped: if it's slow, we still take the
+       person to their dashboard rather than leaving them stuck on this page. */
     try {
       await withTimeout(
         f.dbM.set(f.dbM.ref(f.db, 'customer_data/' + cred.user.uid), {
@@ -1183,10 +1231,11 @@ VIEWS.signup.form.addEventListener('submit', async e => {
           role: 'customer',
           createdAt: f.dbM.serverTimestamp()
         }),
-        8000
+        8000,
+        'profile save'
       );
     } catch (dbErr) {
-      console.error('Profile was not saved. Check your Realtime Database rules.', dbErr);
+      console.error('Profile was not saved (or timed out). Check your Realtime Database rules.', dbErr);
     }
 
     setHint(true);
@@ -1230,7 +1279,7 @@ VIEWS.forgot.form.addEventListener('submit', async e => {
   setBusy(form, true);
   try {
     const f = await needFirebase();
-    await f.authM.sendPasswordResetEmail(f.auth, email);
+    await withTimeout(f.authM.sendPasswordResetEmail(f.auth, email), AUTH_TIMEOUT_MS, 'password reset');
   } catch (err) {
     /* Same answer whether or not the email has an account, so nobody can probe for members */
     if (err && err.code !== 'auth/user-not-found') {
