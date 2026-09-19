@@ -232,17 +232,24 @@ a { color: inherit; }
 .mb-shadow { position: absolute; left: .15rem; bottom: .25rem; width: 2.1rem; height: .5rem; border-radius: 50%; background: rgba(0, 0, 0, .22); }
 
 .tabs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .3rem;
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .3rem;
   background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
   margin-bottom: 1.5rem;
 }
+.tab-indicator {
+  position: absolute; top: .3rem; bottom: .3rem; left: .3rem;
+  width: calc(50% - .3rem); border-radius: 999px; background: var(--ball);
+  transition: transform .4s var(--ease-spring);
+  will-change: transform; z-index: 0;
+}
 .tab {
+  position: relative; z-index: 1;
   font: inherit; font-weight: 650; padding: .6rem 1rem; border: 0; border-radius: 999px;
   background: transparent; color: var(--ink-soft); cursor: pointer;
-  transition: background .25s ease, color .2s, transform .25s var(--ease-spring);
+  transition: color .3s ease, transform .25s var(--ease-spring);
 }
 .tab:hover { color: var(--ink); }
-.tab[aria-selected="true"] { background: var(--ball); color: var(--on-ball); }
+.tab[aria-selected="true"] { color: var(--on-ball); }
 .tab:active { transform: scale(.97); }
 
 h1 {
@@ -270,20 +277,27 @@ h1 {
 form { display: grid; gap: 1rem; }
 .field label { display: block; font-size: .85rem; font-weight: 600; color: var(--ink-soft); margin: 0 0 .3rem .15rem; transition: color .2s; }
 .field:focus-within label { color: var(--ink); }
-.field input[type="email"], .field input[type="tel"], .field input[type="password"], .field input[type="text"] {
+.field input[type="email"], .field input[type="tel"], .field input[type="password"], .field input[type="text"], .field select {
   display: block; width: 100%; min-width: 0;
   font: inherit; font-size: 1rem; height: 3rem; padding: 0 .85rem;
   color: var(--ink); background: var(--bg);
   border: 1px solid var(--line); border-radius: 12px;
   transition: border-color .2s, box-shadow .25s, transform .25s var(--ease-spring);
 }
-.field input:hover { border-color: var(--ink-soft); }
-.field input:focus { border-color: var(--court); box-shadow: 0 0 0 4px color-mix(in srgb, var(--court) 25%, transparent); transform: translateY(-1px); outline: none; }
-.field.invalid input { border-color: var(--danger); }
-.field.invalid input:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 25%, transparent); }
+.field select {
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23456069' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat; background-position: right .75rem center; background-size: 1.1rem;
+  padding-right: 2.25rem; cursor: pointer;
+}
+.field input:hover, .field select:hover { border-color: var(--ink-soft); }
+.field input:focus, .field select:focus { border-color: var(--court); box-shadow: 0 0 0 4px color-mix(in srgb, var(--court) 25%, transparent); transform: translateY(-1px); outline: none; }
+.field.invalid input, .field.invalid select { border-color: var(--danger); }
+.field.invalid input:focus, .field.invalid select:focus { box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 25%, transparent); }
 .hint { margin: .3rem 0 0 .15rem; font-size: .85rem; color: var(--ink-soft); }
 .err { margin: .3rem 0 0 .15rem; font-size: .88rem; font-weight: 500; color: var(--danger); }
 .err:empty { display: none; }
+.phone-row { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .75rem; align-items: start; }
 
 .pw { position: relative; }
 .pw input { padding-right: 3.2rem !important; }
@@ -301,6 +315,31 @@ form { display: grid; gap: 1rem; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .check { display: inline-flex; align-items: center; gap: .55rem; cursor: pointer; font-weight: 500; user-select: none; }
 .check input { width: 1.2rem; height: 1.2rem; margin: 0; accent-color: var(--court); cursor: pointer; }
+
+/* Modern custom checkbox used for the privacy agreement */
+.check.styled { position: relative; display: flex; align-items: center; gap: .65rem; padding-left: 0; }
+.check.styled input { position: absolute; opacity: 0; width: 1.35rem; height: 1.35rem; left: 0; top: .05rem; margin: 0; cursor: pointer; }
+.check.styled .box {
+  position: relative; flex: none; width: 1.35rem; height: 1.35rem; margin-top: .05rem;
+  border-radius: 8px; border: 1.5px solid var(--line); background: var(--bg);
+  display: grid; place-items: center; overflow: hidden;
+  transition: background .3s var(--ease-spring), border-color .3s ease, transform .25s var(--ease-spring), box-shadow .25s ease;
+}
+.check.styled .box svg {
+  width: 1rem; height: 1rem; fill: none; stroke: #fff; stroke-width: 3.2;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 20; stroke-dashoffset: 20;
+  transition: stroke-dashoffset .3s var(--ease-out) .05s;
+}
+.check.styled input:checked ~ .box {
+  background: linear-gradient(135deg, var(--ok), var(--court)); border-color: transparent;
+  box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--court) 55%, transparent);
+  transform: scale(1.04);
+}
+.check.styled input:checked ~ .box svg { stroke-dashoffset: 0; }
+.check.styled input:hover ~ .box { border-color: var(--court); }
+.check.styled input:focus-visible ~ .box { outline: 3px solid var(--focus); outline-offset: 2px; }
+.check.styled .check-text { line-height: 1.4; }
 .linkbtn {
   font: inherit; font-weight: 600; padding: .25rem 0; border: 0; background: none; cursor: pointer;
   color: var(--ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line);
@@ -310,6 +349,122 @@ form { display: grid; gap: 1rem; }
 .switch { margin: 1.25rem 0 0; text-align: center; color: var(--ink-soft); font-size: .97rem; }
 
 .noscript { margin: 0 0 1rem; color: var(--danger); font-weight: 600; }
+
+/* ------------------------------------------------------------------
+   Card height crossfade between views
+------------------------------------------------------------------ */
+.card-body { position: relative; transition: height .38s var(--ease-out); overflow: hidden; }
+.card-body.measuring { transition: none; }
+form.leaving { position: absolute; inset: 0 0 auto 0; opacity: 0; transform: translateY(-8px); pointer-events: none; transition: opacity .22s var(--ease-out), transform .22s var(--ease-out); }
+form.enter { animation: rise .4s var(--ease-out) backwards; }
+
+/* ------------------------------------------------------------------
+   Password strength meter
+------------------------------------------------------------------ */
+.meter { margin: .65rem 0 0; }
+.meter-track {
+  position: relative; height: .5rem; border-radius: 999px; overflow: hidden;
+  background: var(--line);
+}
+.meter-fill {
+  position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: inherit;
+  transition: width .4s var(--ease-spring), background .4s ease;
+}
+.meter-fill.weak   { background: linear-gradient(90deg, var(--danger), #FF9D80); }
+.meter-fill.fair   { background: linear-gradient(90deg, #D69A1E, #F6C94B); }
+.meter-fill.good   { background: linear-gradient(90deg, var(--court), #7DA8FF); }
+.meter-fill.strong { background: linear-gradient(90deg, var(--ok), #5FE3C7); }
+.meter-label { display: flex; justify-content: space-between; margin-top: .5rem; font-size: .82rem; color: var(--ink-soft); }
+.meter-label b { font-weight: 700; transition: color .3s ease; }
+.meter-label b.weak { color: var(--danger); }
+.meter-label b.fair { color: #B87F0F; }
+.meter-label b.good { color: var(--court); }
+.meter-label b.strong { color: var(--ok); }
+.meter-tips { margin: .6rem 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.meter-tips li {
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  font-size: .78rem; font-weight: 650; color: var(--ink-soft); text-align: center;
+  padding: .55rem .5rem; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--line);
+  transition: color .25s ease, background .3s ease, border-color .25s ease, transform .3s var(--ease-spring), box-shadow .3s ease;
+}
+.meter-tips li .tick {
+  width: 1rem; height: 1rem; border-radius: 50%; flex: none; box-sizing: border-box; padding: 2px;
+  background: var(--line); fill: none; stroke: transparent; stroke-width: 3.2;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: background .3s var(--ease-spring), stroke .2s ease .05s;
+}
+.meter-tips li.met {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(135deg, var(--ok), var(--court));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--ok) 70%, transparent);
+}
+.meter-tips li.met .tick { background: rgba(255, 255, 255, .3); stroke: #fff; }
+
+/* ------------------------------------------------------------------
+   Privacy policy modal
+------------------------------------------------------------------ */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 1.25rem;
+  background: rgba(8, 16, 20, .55);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity .28s var(--ease-out);
+}
+.modal-overlay.open { opacity: 1; }
+.modal-overlay[hidden] { display: flex !important; pointer-events: none; }
+.modal {
+  width: min(34rem, 100%); max-height: min(34rem, 82dvh);
+  display: flex; flex-direction: column; position: relative;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .6);
+  transform: translateY(24px) scale(.96); opacity: 0;
+  transition: transform .32s var(--ease-spring), opacity .28s var(--ease-out);
+  overflow: hidden;
+}
+.modal::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--court), var(--kitchen), var(--ball));
+}
+.modal-overlay.open .modal { transform: none; opacity: 1; }
+.modal-head { display: flex; align-items: center; gap: .8rem; padding: 1.5rem 1.5rem .5rem; }
+.modal-head .modal-icon {
+  flex: none; width: 2.4rem; height: 2.4rem; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--court), var(--kitchen)); color: #fff;
+}
+.modal-head .modal-icon svg { width: 1.3rem; height: 1.3rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.modal-head h2 { margin: 0; flex: 1; font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+.modal-close {
+  width: 2.2rem; height: 2.2rem; flex: none; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: transparent; color: var(--ink-soft); cursor: pointer;
+  font-size: 1.4rem; line-height: 1; transition: background .2s, color .2s, transform .25s var(--ease-spring);
+}
+.modal-close:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); transform: rotate(90deg); }
+.modal-body {
+  overflow-y: auto; padding: .5rem 1.5rem 1.25rem; color: var(--ink-soft);
+  scroll-behavior: smooth; overscroll-behavior: contain;
+}
+.modal-body h3 {
+  color: var(--ink); font-size: 1.02rem; margin: 1.15rem 0 .45rem; padding-left: .7rem;
+  border-left: 3px solid var(--court); line-height: 1.3;
+}
+.modal-body h3:first-child { margin-top: 0; }
+.modal-body p { margin: 0 0 .8rem; font-size: .96rem; line-height: 1.55; }
+#privacy-end { color: var(--ink); }
+.modal-foot {
+  padding: 1rem 1.5rem; border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+}
+.modal-hint { margin: 0; font-size: .85rem; color: var(--ink-soft); transition: color .25s ease; }
+.modal-hint.ready { color: var(--ok); font-weight: 600; }
+.modal-foot .btn { padding: .7rem 1.4rem; background: var(--line); color: var(--ink-soft); box-shadow: none; }
+.modal-foot .btn:not(:disabled) {
+  background: linear-gradient(135deg, var(--ok), var(--court)); color: #fff;
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--court) 65%, transparent);
+}
+.modal-foot .btn:not(:disabled):hover { transform: translateY(-2px) scale(1.03); }
+@media (prefers-reduced-motion: no-preference) { .modal-overlay.open .modal { animation: pop-in .38s var(--ease-spring) backwards; } }
 
 /* ------------------------------------------------------------------
    Motion (skipped for reduced-motion visitors)
@@ -390,6 +545,7 @@ form { display: grid; gap: 1rem; }
     <noscript><p class="noscript">This page needs JavaScript to log you in.</p></noscript>
 
     <div class="tabs" id="tabs" role="tablist" aria-label="Account">
+      <span class="tab-indicator" id="tab-indicator" aria-hidden="true"></span>
       <button class="tab" id="tab-login" role="tab" type="button" aria-selected="true" aria-controls="form-login">Log in</button>
       <button class="tab" id="tab-signup" role="tab" type="button" aria-selected="false" aria-controls="form-signup" tabindex="-1">Sign up</button>
     </div>
@@ -399,6 +555,7 @@ form { display: grid; gap: 1rem; }
 
     <div class="msg" id="msg" role="alert" hidden><span id="msg-text"></span></div>
 
+    <div class="card-body" id="card-body">
     <!-- LOG IN -->
     <form id="form-login" class="enter" novalidate aria-labelledby="tab-login" role="tabpanel">
       <div class="field">
@@ -432,33 +589,60 @@ form { display: grid; gap: 1rem; }
         <input id="s-email" name="email" type="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" aria-describedby="s-email-err">
         <p class="err" id="s-email-err"></p>
       </div>
-      <div class="field">
-        <label for="s-phone">Contact number</label>
-        <input id="s-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="0917 123 4567" aria-describedby="s-phone-err">
-        <p class="err" id="s-phone-err"></p>
+      <div class="phone-row">
+        <div class="field">
+          <label for="s-cc">Country</label>
+          <select id="s-cc" name="countryCode" autocomplete="tel-country-code" aria-describedby="s-cc-err">
+            <option value="63" selected>+63 (PH)</option>
+          </select>
+          <p class="err" id="s-cc-err"></p>
+        </div>
+        <div class="field">
+          <label for="s-phone">Mobile number</label>
+          <input id="s-phone" name="phone" type="tel" autocomplete="tel-national" inputmode="numeric" placeholder="917 123 4567" aria-describedby="s-phone-err">
+          <p class="err" id="s-phone-err"></p>
+        </div>
       </div>
       <div class="field">
         <label for="s-pass">Password</label>
         <div class="pw">
-          <input id="s-pass" name="password" type="password" autocomplete="new-password" aria-describedby="s-pass-hint s-pass-err">
+          <input id="s-pass" name="password" type="password" autocomplete="new-password" maxlength="20" aria-describedby="s-pass-hint s-pass-err">
           <button class="eye" type="button" data-eye="s-pass" aria-label="Show password" aria-pressed="false" aria-controls="s-pass">
             <svg class="on" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-eye"/></svg>
             <svg class="off" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-eye-off"/></svg>
           </button>
         </div>
-        <p class="hint" id="s-pass-hint">At least 8 characters.</p>
+        <p class="hint" id="s-pass-hint">5–20 characters, with an uppercase, a lowercase &amp; a special character.</p>
+        <div class="meter" id="s-pass-meter" hidden>
+          <div class="meter-track"><div class="meter-fill" id="s-pass-fill"></div></div>
+          <div class="meter-label"><span>Password strength</span><b id="s-pass-strength">Weak</b></div>
+          <ul class="meter-tips">
+            <li data-check="len"><svg class="tick" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg><span>5–20 characters</span></li>
+            <li data-check="upper"><svg class="tick" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg><span>Uppercase letter</span></li>
+            <li data-check="lower"><svg class="tick" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg><span>Lowercase letter</span></li>
+            <li data-check="special"><svg class="tick" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg><span>Special character</span></li>
+          </ul>
+        </div>
         <p class="err" id="s-pass-err"></p>
       </div>
       <div class="field">
         <label for="s-pass2">Confirm password</label>
         <div class="pw">
-          <input id="s-pass2" name="password2" type="password" autocomplete="new-password" aria-describedby="s-pass2-err">
+          <input id="s-pass2" name="password2" type="password" autocomplete="new-password" maxlength="20" aria-describedby="s-pass2-err">
           <button class="eye" type="button" data-eye="s-pass2" aria-label="Show password" aria-pressed="false" aria-controls="s-pass2">
             <svg class="on" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-eye"/></svg>
             <svg class="off" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-eye-off"/></svg>
           </button>
         </div>
         <p class="err" id="s-pass2-err"></p>
+      </div>
+      <div class="field">
+        <label class="check styled" for="s-agree">
+          <input type="checkbox" id="s-agree">
+          <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></span>
+          <span class="check-text">I agree to the <button type="button" class="linkbtn" id="open-privacy">Privacy Policy</button></span>
+        </label>
+        <p class="err" id="s-agree-err"></p>
       </div>
       <button class="btn btn-block" type="submit"><span class="label">Create account</span><span class="spin" aria-hidden="true"></span></button>
       <p class="switch" style="margin:0">Already have an account? <button class="linkbtn" type="button" data-go="login">Log in</button></p>
@@ -474,8 +658,39 @@ form { display: grid; gap: 1rem; }
       <button class="btn btn-block" type="submit"><span class="label">Send reset link</span><span class="spin" aria-hidden="true"></span></button>
       <p class="switch" style="margin:0"><button class="linkbtn" type="button" data-go="login">Back to log in</button></p>
     </form>
+    </div>
   </section>
 </main>
+
+<!-- PRIVACY POLICY MODAL -->
+<div class="modal-overlay" id="privacy-modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+    <div class="modal-head">
+      <span class="modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.4 8.7-8 10-4.6-1.3-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <h2 id="privacy-title">Privacy Policy</h2>
+      <button class="modal-close" type="button" id="privacy-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="privacy-body" tabindex="0">
+      <h3>What we collect</h3>
+      <p>When you create an account with The Court Club, we collect your email address, contact number, and the bookings you make so we can reserve courts on your behalf and reach you about your reservations.</p>
+      <h3>How we use your information</h3>
+      <p>We use your details to manage your account, confirm and remind you about bookings, and respond to support requests. We do not sell your personal information to third parties.</p>
+      <h3>Where it's stored</h3>
+      <p>Your account and booking data are stored securely in our Firebase-hosted database. Passwords are handled entirely by Firebase Authentication and are never stored in plain text or visible to our staff.</p>
+      <h3>Your choices</h3>
+      <p>You may request a copy of your data, ask us to correct it, or request account deletion at any time by contacting the club directly. Declining to share required details (such as a contact number) may limit your ability to book a court.</p>
+      <h3>Cookies and local storage</h3>
+      <p>We use your browser's local storage only to remember basic preferences, such as light or dark mode and whether you asked to be remembered on this device. We do not use third-party advertising trackers.</p>
+      <h3>Changes to this policy</h3>
+      <p>If this policy changes, we will update this page. Continuing to use your account after a change means you accept the updated terms.</p>
+      <p id="privacy-end"><strong>You've reached the end of the Privacy Policy.</strong></p>
+    </div>
+    <div class="modal-foot">
+      <p class="modal-hint" id="privacy-hint">Scroll to the bottom to continue.</p>
+      <button class="btn" type="button" id="privacy-agree" disabled>I Agree</button>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 /* ------------------------------------------------------------------
@@ -549,7 +764,26 @@ function sameSiteUrl(url, fallback) {
 }
 const params = new URLSearchParams(location.search);
 const nextUrl = sameSiteUrl(params.get('next'), FALLBACK_NEXT);
-function goNext() { location.replace(nextUrl.pathname + nextUrl.search + nextUrl.hash); }
+const ROLE_PATHS = { admin: '../pages/admin/dashboard.html', customer: '../' };
+
+/* Look up the signed-in user's role and send them to the matching dashboard.
+   A caller that already knows the role (e.g. right after signup) can pass it
+   in to skip the extra database read. An explicit ?next= always wins, so
+   deep links (like a specific booking page) keep working as before. */
+async function goNext(f, uid, knownRole) {
+  let role = knownRole;
+  if (!role) {
+    role = 'customer';
+    try {
+      const snap = await f.dbM.get(f.dbM.ref(f.db, 'customer_data/' + uid + '/role'));
+      if (snap.exists() && snap.val()) role = snap.val();
+    } catch (err) {
+      console.error('Could not read the account role, defaulting to customer.', err);
+    }
+  }
+  const path = ROLE_PATHS[role] || ROLE_PATHS.customer;
+  location.replace(path);
+}
 
 function setHint(on) {
   try { on ? localStorage.setItem(HINT_KEY, '1') : localStorage.removeItem(HINT_KEY); } catch (e) {}
@@ -558,7 +792,7 @@ function setHint(on) {
 function onAuthChange(user) {
   if (user) {
     setHint(true);
-    if (!busy) { showMsg('success', 'You are already logged in. Taking you to booking…'); goNext(); }
+    if (!busy) { showMsg('success', 'You are already logged in. Taking you to your dashboard…'); goNext(fb, user.uid); }
   } else {
     setHint(false);
   }
@@ -625,7 +859,10 @@ const VIEWS = {
   forgot: { form: $('#form-forgot'), title: 'Forgot your password?',  sub: 'Enter your email and we will send you a link to choose a new one.' }
 };
 const tabs = { login: $('#tab-login'), signup: $('#tab-signup') };
+const tabIndicator = $('#tab-indicator');
+const cardBody = $('#card-body');
 let current = 'login';
+let initialized = false;
 
 function resetPasswordFields() {
   $$('[data-eye]').forEach(b => {
@@ -636,30 +873,69 @@ function resetPasswordFields() {
   });
 }
 
+function moveTabIndicator(name) {
+  if (!tabIndicator) return;
+  const index = name === 'signup' ? 1 : 0;
+  tabIndicator.style.transform = 'translateX(' + (index * 100) + '%)';
+}
+
 function showView(name, opts = {}) {
+  const prevForm = VIEWS[current].form;
   current = name;
-  Object.entries(VIEWS).forEach(([key, v]) => { v.form.hidden = key !== name; });
+  const nextForm = VIEWS[name].form;
+
   $('#tabs').hidden = name === 'forgot';
   Object.entries(tabs).forEach(([key, t]) => {
     t.setAttribute('aria-selected', key === name ? 'true' : 'false');
     t.tabIndex = key === name ? 0 : -1;
   });
+  if (name !== 'forgot') moveTabIndicator(name);
+
   $('#title').textContent = VIEWS[name].title;
   $('#sub').textContent = VIEWS[name].sub;
   clearMsg();
   resetPasswordFields();
   $$('input').forEach(i => { if (i.closest('.field')) fieldErr(i, ''); });
 
-  const form = VIEWS[name].form;
-  form.classList.remove('enter'); void form.offsetWidth; form.classList.add('enter');
+  /* Animate the card's height between forms of different lengths, and
+     crossfade the outgoing form instead of an abrupt swap. */
+  if (noMotion || prevForm === nextForm || !initialized) {
+    Object.entries(VIEWS).forEach(([key, v]) => { v.form.hidden = key !== name; });
+    nextForm.classList.remove('enter'); void nextForm.offsetWidth; nextForm.classList.add('enter');
+  } else {
+    const startHeight = cardBody.offsetHeight;
+    cardBody.classList.add('measuring');
+    cardBody.style.height = startHeight + 'px';
+
+    nextForm.hidden = false;
+    nextForm.classList.add('leaving');
+    void cardBody.offsetHeight;
+    const endHeight = nextForm.scrollHeight;
+    nextForm.classList.remove('leaving');
+    nextForm.hidden = true;
+
+    prevForm.classList.add('leaving');
+    requestAnimationFrame(() => {
+      cardBody.classList.remove('measuring');
+      cardBody.style.height = endHeight + 'px';
+    });
+
+    setTimeout(() => {
+      prevForm.hidden = true;
+      prevForm.classList.remove('leaving');
+      nextForm.hidden = false;
+      nextForm.classList.remove('enter'); void nextForm.offsetWidth; nextForm.classList.add('enter');
+      cardBody.style.height = '';
+    }, 240);
+  }
 
   if (name !== 'forgot') {
     const u = new URL(location.href); u.searchParams.set('mode', name);
     history.replaceState(null, '', u);
   }
   if (opts.focus) {
-    const target = opts.focus === 'tab' ? tabs[name] : $('input', form);
-    if (target) target.focus();
+    const target = opts.focus === 'tab' ? tabs[name] : $('input', nextForm);
+    if (target) setTimeout(() => target.focus(), noMotion ? 0 : 250);
   }
 }
 
@@ -688,6 +964,147 @@ $$('[data-eye]').forEach(b => b.addEventListener('click', () => {
 }));
 
 /* ------------------------------------------------------------------
+   Password strength meter (signup)
+------------------------------------------------------------------ */
+const pwInput = $('#s-pass');
+const pwMeter = $('#s-pass-meter');
+const pwFill = $('#s-pass-fill');
+const pwStrengthLabel = $('#s-pass-strength');
+const pwTips = $$('.meter-tips li', pwMeter);
+
+const PW_MIN = 5, PW_MAX = 20;
+const PW_CHECKS = {
+  len:     pw => pw.length >= PW_MIN && pw.length <= PW_MAX,
+  upper:   pw => /[A-Z]/.test(pw),
+  lower:   pw => /[a-z]/.test(pw),
+  special: pw => /[^A-Za-z0-9]/.test(pw)
+};
+
+function passwordScore(pw) {
+  if (!pw) return 0;
+  return Object.values(PW_CHECKS).filter(fn => fn(pw)).length; // 0-4
+}
+function scoreMeta(score) {
+  if (score <= 1) return { label: 'Weak', cls: 'weak', pct: 25 };
+  if (score === 2) return { label: 'Fair', cls: 'fair', pct: 50 };
+  if (score === 3) return { label: 'Good', cls: 'good', pct: 75 };
+  return { label: 'Strong', cls: 'strong', pct: 100 };
+}
+function passwordError(pw) {
+  if (!pw) return 'Create a password.';
+  if (pw.length > PW_MAX) return 'Use ' + PW_MAX + ' characters or fewer.';
+  if (pw.length < PW_MIN) return 'Use at least ' + PW_MIN + ' characters.';
+  if (!PW_CHECKS.upper(pw)) return 'Add at least one uppercase letter.';
+  if (!PW_CHECKS.lower(pw)) return 'Add at least one lowercase letter.';
+  if (!PW_CHECKS.special(pw)) return 'Add at least one special character.';
+  return '';
+}
+function updatePasswordMeter() {
+  const pw = pwInput.value;
+  pwMeter.hidden = !pw;
+  if (!pw) return;
+  const score = passwordScore(pw);
+  const meta = scoreMeta(score);
+  pwFill.style.width = meta.pct + '%';
+  pwFill.className = 'meter-fill ' + meta.cls;
+  pwStrengthLabel.textContent = meta.label;
+  pwStrengthLabel.className = meta.cls;
+  pwTips.forEach(li => li.classList.toggle('met', PW_CHECKS[li.dataset.check](pw)));
+}
+if (pwInput) pwInput.addEventListener('input', updatePasswordMeter);
+
+/* ------------------------------------------------------------------
+   Contact number (signup): fixed +63 (Philippines) country code,
+   formatted automatically as 999 999 9999, capped at 10 digits
+------------------------------------------------------------------ */
+const ccInput = $('#s-cc');
+const phoneInput = $('#s-phone');
+
+const ccDigits = () => ccInput.value;
+
+/* Digits of the mobile number only: no leading 0, 10 digits at most */
+function localDigits(raw, cc) {
+  let d = raw.replace(/\D/g, '');
+  if (cc === '63') {
+    if (d.startsWith('63') && d.length > 10) d = d.slice(2);
+    if (d.startsWith('0')) d = d.slice(1);
+  }
+  return d.slice(0, 10);
+}
+const groupPhone = d => [d.slice(0, 3), d.slice(3, 6), d.slice(6, 10)].filter(Boolean).join(' ');
+
+function formatPhone() {
+  const digitsBefore = phoneInput.value.slice(0, phoneInput.selectionStart || 0).replace(/\D/g, '').length;
+  const formatted = groupPhone(localDigits(phoneInput.value, ccDigits()));
+  phoneInput.value = formatted;
+  if (document.activeElement === phoneInput) {
+    /* keep the cursor after the same number of digits */
+    let n = 0, i = 0;
+    for (; i < formatted.length && n < digitsBefore; i++) if (/\d/.test(formatted[i])) n++;
+    phoneInput.setSelectionRange(i, i);
+  }
+}
+ccInput.addEventListener('change', formatPhone);
+phoneInput.addEventListener('input', formatPhone);
+
+/* ------------------------------------------------------------------
+   Privacy policy modal: reading to the bottom is required to agree.
+   The checkbox can only become checked through the "I Agree" button;
+   clicking it directly (or the link) opens the modal instead.
+------------------------------------------------------------------ */
+const agreeBox = $('#s-agree');
+const privacyModal = $('#privacy-modal');
+const privacyBody = $('#privacy-body');
+const privacyAgreeBtn = $('#privacy-agree');
+const privacyHint = $('#privacy-hint');
+let privacyReturnFocus = null;
+
+function checkPrivacyScroll() {
+  const atBottom = privacyBody.scrollTop + privacyBody.clientHeight >= privacyBody.scrollHeight - 6;
+  privacyAgreeBtn.disabled = !atBottom;
+  privacyHint.textContent = atBottom ? 'You can agree now.' : 'Scroll to the bottom to continue.';
+  privacyHint.classList.toggle('ready', atBottom);
+}
+
+function openPrivacyModal(returnTo) {
+  privacyReturnFocus = returnTo || document.activeElement;
+  privacyBody.scrollTop = 0;
+  privacyModal.hidden = false;
+  requestAnimationFrame(() => {
+    privacyModal.classList.add('open');
+    checkPrivacyScroll();
+    privacyBody.focus();
+  });
+  document.addEventListener('keydown', onPrivacyKeydown);
+}
+function closePrivacyModal() {
+  privacyModal.classList.remove('open');
+  document.removeEventListener('keydown', onPrivacyKeydown);
+  setTimeout(() => { privacyModal.hidden = true; }, noMotion ? 0 : 300);
+  if (privacyReturnFocus && privacyReturnFocus.focus) privacyReturnFocus.focus();
+}
+function onPrivacyKeydown(e) { if (e.key === 'Escape') closePrivacyModal(); }
+
+privacyBody.addEventListener('scroll', checkPrivacyScroll);
+$('#privacy-close').addEventListener('click', () => closePrivacyModal());
+privacyModal.addEventListener('click', e => { if (e.target === privacyModal) closePrivacyModal(); });
+privacyAgreeBtn.addEventListener('click', () => {
+  agreeBox.checked = true;
+  fieldErr(agreeBox, '');
+  closePrivacyModal();
+});
+$('#open-privacy').addEventListener('click', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  openPrivacyModal($('#open-privacy'));
+});
+agreeBox.addEventListener('click', e => {
+  e.preventDefault();
+  if (agreeBox.checked) { agreeBox.checked = false; return; }
+  openPrivacyModal(agreeBox);
+});
+
+/* ------------------------------------------------------------------
    Log in
 ------------------------------------------------------------------ */
 VIEWS.login.form.addEventListener('submit', async e => {
@@ -710,11 +1127,11 @@ VIEWS.login.form.addEventListener('submit', async e => {
     const f = await needFirebase();
     /* Remember me: keep the session across browser restarts, otherwise end it when the tab closes */
     await f.authM.setPersistence(f.auth, remember ? f.authM.browserLocalPersistence : f.authM.browserSessionPersistence);
-    await f.authM.signInWithEmailAndPassword(f.auth, email, pw);
+    const cred = await f.authM.signInWithEmailAndPassword(f.auth, email, pw);
     try { remember ? localStorage.setItem(REMEMBER_KEY, email) : localStorage.removeItem(REMEMBER_KEY); } catch (err) {}
     setHint(true);
-    showMsg('success', 'Logged in. Taking you to booking…');
-    goNext();
+    showMsg('success', 'Logged in. Taking you to your dashboard…');
+    goNext(f, cred.user.uid);
   } catch (err) {
     console.error(err);
     showMsg('error', friendly(err));
@@ -732,16 +1149,20 @@ VIEWS.signup.form.addEventListener('submit', async e => {
   if (busy) return;
   clearMsg();
   const email = $('#s-email').value.trim();
-  const phoneRaw = $('#s-phone').value.trim();
-  const phone = phoneRaw.replace(/[\s\-().]/g, '');
+  const ccVal = ccDigits();
+  const localNum = localDigits(phoneInput.value, ccVal);
+  const minLocal = ccVal === '63' ? 10 : 7;
+  const phone = '+' + ccVal + ' ' + groupPhone(localNum);
   const pw = $('#s-pass').value;
   const pw2 = $('#s-pass2').value;
 
   const ok = validate([
     [$('#s-email'), !email ? 'Enter your email.' : !EMAIL_RE.test(email) ? 'Enter a valid email address.' : ''],
-    [$('#s-phone'), !phoneRaw ? 'Enter your contact number.' : !PHONE_RE.test(phone) ? 'Use 7 to 15 digits, for example 0917 123 4567.' : ''],
-    [$('#s-pass'), !pw ? 'Create a password.' : pw.length < 8 ? 'Use at least 8 characters.' : ''],
-    [$('#s-pass2'), !pw2 ? 'Confirm your password.' : pw2 !== pw ? 'Passwords do not match.' : '']
+    [$('#s-cc'), !ccVal ? 'Select a country.' : ''],
+    [$('#s-phone'), !localNum ? 'Enter your mobile number.' : localNum.length < minLocal ? (ccVal === '63' ? 'Enter 10 digits, for example 917 123 4567.' : 'Enter a valid mobile number.') : ''],
+    [$('#s-pass'), passwordError(pw)],
+    [$('#s-pass2'), !pw2 ? 'Confirm your password.' : pw2 !== pw ? 'Passwords do not match.' : ''],
+    [agreeBox, !agreeBox.checked ? 'You must read and agree to the Privacy Policy.' : '']
   ]);
   if (!ok) return;
 
@@ -752,23 +1173,25 @@ VIEWS.signup.form.addEventListener('submit', async e => {
     await f.authM.setPersistence(f.auth, f.authM.browserLocalPersistence);
     const cred = await f.authM.createUserWithEmailAndPassword(f.auth, email, pw);
 
-    /* Save the contact number. The account already exists, so a failure here must not block the visitor. */
+    /* Save the profile. New accounts always start with the "customer" role;
+       an admin can only be promoted later from the Firebase console or an admin tool. */
     try {
       await withTimeout(
-        f.dbM.set(f.dbM.ref(f.db, 'users/' + cred.user.uid), {
+        f.dbM.set(f.dbM.ref(f.db, 'customer_data/' + cred.user.uid), {
           email: email,
           phone: phone,
+          role: 'customer',
           createdAt: f.dbM.serverTimestamp()
         }),
         8000
       );
     } catch (dbErr) {
-      console.error('Contact number was not saved. Check your Realtime Database rules.', dbErr);
+      console.error('Profile was not saved. Check your Realtime Database rules.', dbErr);
     }
 
     setHint(true);
-    showMsg('success', 'Account created. Taking you to booking…');
-    goNext();
+    showMsg('success', 'Account created. Taking you to your dashboard…');
+    goNext(f, cred.user.uid, 'customer');
   } catch (err) {
     console.error(err);
     showMsg('error', friendly(err));
@@ -868,13 +1291,17 @@ try {
     try { saved = localStorage.getItem('tcc-theme'); } catch (err) {}
     if (!saved) apply(e.matches ? 'dark' : 'light', false);
   });
-})();   
+})();
 
 /* ------------------------------------------------------------------
    Start on the right tab: ?mode=signup opens Sign up
 ------------------------------------------------------------------ */
 const startMode = params.get('mode');
-showView(startMode === 'signup' ? 'signup' : startMode === 'forgot' ? 'forgot' : 'login');
+const initialView = startMode === 'signup' ? 'signup' : startMode === 'forgot' ? 'forgot' : 'login';
+if (tabIndicator) tabIndicator.style.transition = 'none';
+showView(initialView);
+initialized = true;
+if (tabIndicator) requestAnimationFrame(() => requestAnimationFrame(() => { tabIndicator.style.transition = ''; }));
 </script>
 </body>
 </html>

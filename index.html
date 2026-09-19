@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <!-- Security: lock down where scripts, styles, fonts and forms can load from or post to.
-     (Inline code is allowed because this page is a single file.) -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+     (Inline code is allowed because this page is a single file.)
+     Firebase hosts are allowed so the account button can see who is logged in. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>The Court Club | Pickleball courts in Cebu</title>
 <meta name="description" content="A family-built pickleball club in Cebu where beginners feel as welcome as seasoned players. Book a court.">
@@ -441,6 +442,61 @@ h2 {
 .to-top:hover svg { transform: translateY(-2px); }
 
 /* ------------------------------------------------------------------
+   Account button + menu (bottom left). Only shown while someone is
+   logged in. Tapping the button opens Bookings, Settings and Logout.
+------------------------------------------------------------------ */
+.acct {
+  position: fixed; z-index: 60;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; align-items: flex-start; gap: .65rem;
+}
+.acct-btn {
+  width: 3.25rem; height: 3.25rem; padding: 0;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: var(--court); color: #fff;
+  box-shadow: 0 14px 26px -12px rgba(0, 0, 0, .65);
+  transition: transform .35s var(--ease-spring), box-shadow .25s ease;
+}
+.acct-btn:hover { transform: translateY(-3px) scale(1.07); }
+.acct-btn:active { transform: scale(.92); }
+.acct-btn svg { width: 1.45rem; height: 1.45rem; }
+.acct.open .acct-btn { box-shadow: 0 0 0 4px color-mix(in srgb, var(--court) 30%, transparent), 0 14px 26px -12px rgba(0, 0, 0, .65); }
+
+.acct-menu {
+  display: grid; gap: .5rem;
+  opacity: 0; visibility: hidden; transform: translateY(10px);
+  transition: opacity .2s ease, transform .3s var(--ease-out), visibility 0s linear .3s;
+}
+.acct.open .acct-menu {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity .2s ease, transform .3s var(--ease-out), visibility 0s;
+}
+.acct-item {
+  display: inline-flex; align-items: center; gap: .7rem;
+  width: 100%; min-width: 11rem;
+  font: inherit; font-weight: 650; line-height: 1.1; text-align: left;
+  padding: .8rem 1.25rem .8rem 1rem; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--surface); color: var(--ink); text-decoration: none;
+  box-shadow: inset 0 0 0 1.5px var(--line), 0 14px 26px -16px rgba(0, 0, 0, .6);
+  transition: transform .25s var(--ease-spring), box-shadow .2s ease;
+}
+.acct-item:hover { transform: translateX(4px); box-shadow: inset 0 0 0 1.5px var(--ink), 0 14px 26px -16px rgba(0, 0, 0, .6); }
+.acct-item:active { transform: scale(.97); }
+.acct-item:disabled { cursor: wait; opacity: .7; }
+.acct-item svg { width: 1.2rem; height: 1.2rem; flex: none; }
+.acct-item.logout { color: #B3261E; }
+:root[data-theme="dark"] .acct-item.logout { color: #FF8A80; }
+
+/* Logout confirmation (reuses the modal look) */
+.confirm-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.confirm-actions .btn { width: 100%; padding: 1rem 1.25rem; }
+.confirm-actions .btn:disabled { opacity: .65; cursor: not-allowed; }
+.confirm-err { margin: -.6rem 0 1rem; color: #B3261E; font-weight: 500; font-size: .95rem; }
+:root[data-theme="dark"] .confirm-err { color: #FF8A80; }
+
+/* ------------------------------------------------------------------
    Login / guest modal (opened by the header "Book a court" button)
 ------------------------------------------------------------------ */
 dialog.modal {
@@ -565,6 +621,13 @@ dialog.modal::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-filt
 
   /* pulsing ring on the closing call to action */
   .btn-pulse { animation: ring 2.6s ease-out infinite; }
+
+  /* account button pops in, menu items rise one after another */
+  .acct:not([hidden]) .acct-btn { animation: pop-in .5s var(--ease-spring) backwards; }
+  .acct.open .acct-item { animation: rise .45s var(--ease-out) backwards; }
+  .acct.open .acct-item:nth-child(3) { animation-delay: 0s; }
+  .acct.open .acct-item:nth-child(2) { animation-delay: .06s; }
+  .acct.open .acct-item:nth-child(1) { animation-delay: .12s; }
 
   /* modal */
   dialog.modal[open]::backdrop { animation: fade-in .3s ease both; }
@@ -875,6 +938,27 @@ dialog.modal::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-filt
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
 </button>
 
+<!-- ACCOUNT BUTTON + MENU (bottom left). Hidden unless someone is logged in. -->
+<div class="acct" id="acct" hidden>
+  <div class="acct-menu" id="acct-menu" role="menu" aria-label="Account menu">
+    <a class="acct-item" id="acct-bookings" role="menuitem" href="pages/user/bookings.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+      <span>Bookings</span>
+    </a>
+    <a class="acct-item" id="acct-settings" role="menuitem" href="pages/user/settings.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h3M11 6h9M4 12h10M18 12h2M4 18h2M10 18h10"/><circle cx="9" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg>
+      <span>Settings</span>
+    </a>
+    <button class="acct-item logout" id="acct-logout" type="button" role="menuitem">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      <span>Logout</span>
+    </button>
+  </div>
+  <button class="acct-btn" id="acct-btn" type="button" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" aria-controls="acct-menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+  </button>
+</div>
+
 <!-- LOGIN / GUEST MODAL (opened by the header and closing "Book a court" buttons) -->
 <dialog class="modal" id="book-modal" aria-labelledby="bm-title" aria-describedby="bm-desc">
   <div class="modal-panel">
@@ -909,13 +993,35 @@ dialog.modal::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-filt
   </div>
 </dialog>
 
+<!-- LOGOUT CONFIRMATION (opened from the account menu) -->
+<dialog class="modal" id="logout-modal" aria-labelledby="lm-title" aria-describedby="lm-desc">
+  <div class="modal-panel">
+    <button class="modal-close" type="button" id="lm-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+
+    <div class="modal-ball" aria-hidden="true"><span class="mb-shadow"></span><span class="mb"></span></div>
+
+    <h2 id="lm-title">Log out?</h2>
+    <p class="modal-desc" id="lm-desc">You'll need to log in again to see and manage your bookings.</p>
+    <p class="confirm-err" id="lm-err" role="alert" hidden>Could not log out. Check your connection and try again.</p>
+
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" type="button" id="lm-cancel">Cancel</button>
+      <button class="btn" type="button" id="lm-confirm">Confirm</button>
+    </div>
+  </div>
+</dialog>
+
 <script>
 /* ------------------------------------------------------------------
    Site settings: fill these in. Empty values are simply not shown.
 ------------------------------------------------------------------ */
 const CONFIG = {
-  bookingUrl: 'book/',              // where the booking flow lives
+  bookingUrl: './pages/user/bookings.html',              // where the booking flow lives
   accountUrl: 'auth/account.html',  // log in / sign up page (receives ?mode=login|signup&next=<bookingUrl>)
+  bookingsUrl: 'pages/user/bookings.html',  // "Bookings" in the account menu
+  settingsUrl: 'pages/user/settings.html',  // "Settings" in the account menu
   poweredBy: 'NexStepJS',           // shown in the footer
   poweredByUrl: '',                 // optional link for the credit (https only)
   phone: '',                // e.g. '+63 900 000 0000'
@@ -1245,6 +1351,126 @@ if ('serviceWorker' in navigator) {
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   if (isIOS) { iosHint.hidden = false; fallback.hidden = true; }
 })();
+</script>
+
+<!-- Account button (bottom left): shown only while someone is logged in.
+     Uses the same Firebase project as auth/account.html, so it sees the same session. -->
+<script type="module">
+const firebaseConfig = {
+  apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
+  authDomain: "pickleballsystem-729d3.firebaseapp.com",
+  databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pickleballsystem-729d3",
+  storageBucket: "pickleballsystem-729d3.firebasestorage.app",
+  messagingSenderId: "352709442404",
+  appId: "1:352709442404:web:5bb00d7a77036c55d61871",
+  measurementId: "G-QBWPK4B56G"
+};
+const FIREBASE_VERSION = '11.10.0';
+const HINT_KEY = 'tcc-signed-in';   // same hint the login page sets
+
+const wrap = document.getElementById('acct');
+const btn = document.getElementById('acct-btn');
+const logoutBtn = document.getElementById('acct-logout');
+
+document.getElementById('acct-bookings').setAttribute('href', CONFIG.bookingsUrl);
+document.getElementById('acct-settings').setAttribute('href', CONFIG.settingsUrl);
+
+function hintOn() { try { return localStorage.getItem(HINT_KEY) === '1'; } catch (e) { return false; } }
+function setHint(on) { try { on ? localStorage.setItem(HINT_KEY, '1') : localStorage.removeItem(HINT_KEY); } catch (e) {} }
+
+function setOpen(on) {
+  wrap.classList.toggle('open', on);
+  btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+function showAccount(on) {
+  wrap.hidden = !on;
+  if (!on) setOpen(false);
+}
+
+/* Show straight away if the login hint is set, then let Firebase confirm */
+showAccount(hintOn());
+window.addEventListener('pageshow', e => { if (e.persisted) showAccount(hintOn()); });
+
+btn.addEventListener('click', () => setOpen(!wrap.classList.contains('open')));
+document.addEventListener('click', e => { if (!wrap.contains(e.target)) setOpen(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && wrap.classList.contains('open')) { setOpen(false); btn.focus(); }
+});
+
+/* Firebase Auth only (no database needed on this page) */
+let fb = null;
+const fbReady = (async () => {
+  try {
+    const base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/';
+    const [appM, authM] = await Promise.all([
+      import(base + 'firebase-app.js'),
+      import(base + 'firebase-auth.js')
+    ]);
+    const app = appM.initializeApp(firebaseConfig);
+    const auth = authM.initializeAuth(app, {
+      persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.browserSessionPersistence]
+    });
+    fb = { authM, auth };
+    authM.onAuthStateChanged(auth, user => { setHint(!!user); showAccount(!!user); });
+  } catch (err) {
+    console.error('Firebase failed to load', err);
+  }
+})();
+
+/* Logout: ask first, then sign out */
+const dlg = document.getElementById('logout-modal');
+const dlgPanel = dlg.querySelector('.modal-panel');
+const cancelBtn = document.getElementById('lm-cancel');
+const confirmBtn = document.getElementById('lm-confirm');
+const errEl = document.getElementById('lm-err');
+const reduceMotion = document.documentElement.classList.contains('no-motion');
+let closing = false;
+
+function closeLogout() {
+  if (!dlg.open || closing) return;
+  if (reduceMotion) { dlg.close(); return; }
+  closing = true;
+  dlg.classList.add('closing');
+  let done = false;
+  const finish = () => { if (done) return; done = true; dlg.classList.remove('closing'); closing = false; dlg.close(); };
+  dlgPanel.addEventListener('animationend', function h(e) {
+    if (e.target === dlgPanel && e.animationName === 'pop-out') { dlgPanel.removeEventListener('animationend', h); finish(); }
+  });
+  setTimeout(finish, 450);
+}
+
+async function doLogout() {
+  confirmBtn.disabled = true; cancelBtn.disabled = true; errEl.hidden = true;
+  try {
+    await fbReady;
+    if (!fb) throw new Error('Firebase unavailable');
+    await fb.authM.signOut(fb.auth);   // onAuthStateChanged then hides the account button
+    closeLogout();
+  } catch (err) {
+    console.error(err);
+    errEl.hidden = false;
+    confirmBtn.disabled = false; cancelBtn.disabled = false;
+  }
+}
+
+function openLogout() {
+  setOpen(false);
+  errEl.hidden = true;
+  confirmBtn.disabled = false; cancelBtn.disabled = false;
+  if (typeof dlg.showModal !== 'function') { doLogout(); return; }
+  closing = false;
+  dlg.classList.remove('closing');
+  dlg.showModal();
+  cancelBtn.focus({ preventScroll: true });
+}
+
+logoutBtn.addEventListener('click', openLogout);
+cancelBtn.addEventListener('click', closeLogout);
+confirmBtn.addEventListener('click', doLogout);
+document.getElementById('lm-close').addEventListener('click', closeLogout);
+dlg.addEventListener('click', e => { if (e.target === dlg) closeLogout(); });   // click outside
+dlg.addEventListener('cancel', e => { e.preventDefault(); closeLogout(); });     // Esc key
 </script>
 </body>
 </html>
