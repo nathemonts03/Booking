@@ -1,1161 +1,1199 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>NexStepJS · Pickleball Court Booking</title>
-<meta name="description" content="Sign in or create an account to book pickleball courts, join open play, and manage your games." />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<!-- Security: lock down where scripts, styles, fonts and forms can load from or post to.
+     (Inline code is allowed because this page is a single file.) -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>The Court Club | Pickleball courts in Cebu</title>
+<meta name="description" content="A family-built pickleball club in Cebu where beginners feel as welcome as seasoned players. Book a court.">
 
 <!-- PWA -->
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0F2C34" />
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="NexStepJS" />
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F5F7F2">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Court Club">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<!-- Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- Social preview -->
+<meta property="og:title" content="The Court Club">
+<meta property="og:description" content="Pickleball courts in Cebu, built by a family who wanted everyone to feel welcome.">
+<meta property="og:type" content="website">
 
-<!-- Tailwind (play CDN) -->
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Set theme + motion flags before first paint -->
 <script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: {
-          display: ['"Space Grotesk"', 'sans-serif'],
-          body: ['"Inter"', 'sans-serif'],
-        },
-        colors: {
-          court: {
-            DEFAULT: '#0F2C34',
-            2: '#17515F',
-          },
-          ball: '#D9F000',
-          paddle: '#FF6B35',
-        },
-      },
-    },
-  };
+(function () {
+  /* Refuse to run inside someone else's frame (clickjacking guard) */
+  if (window.top !== window.self) {
+    try { window.top.location = window.self.location.href; } catch (e) { document.documentElement.style.display = 'none'; }
+  }
+  var root = document.documentElement, dark = false;
+  root.classList.add('js');
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) root.classList.add('no-motion');
+  try {
+    var saved = localStorage.getItem('tcc-theme');
+    dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } catch (e) {
+    dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  root.dataset.theme = dark ? 'dark' : 'light';
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', dark ? '#0A171D' : '#F5F7F2');
+})();
 </script>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&display=swap" rel="stylesheet">
+
 <style>
-  :root {
-    --bg: #F3F1E8;
-    --bg-soft: #EAE7DA;
-    --surface: #FFFFFF;
-    --surface-2: #F7F5EE;
-    --ink: #10262B;
-    --ink-muted: #55696E;
-    --line: rgba(16, 38, 43, 0.12);
-    --court: #0F2C34;
-    --court-2: #17515F;
-    --ball: #C9DE00;
-    --ball-ink: #10262B;
-    --paddle: #E85A2A;
-    --danger: #D8452E;
-    --success: #2F9E5B;
-    --link: #17515F;
-  }
-  html.dark {
-    --bg: #081A1F;
-    --bg-soft: #0C232A;
-    --surface: #10282F;
-    --surface-2: #0C232A;
-    --ink: #EAF3EF;
-    --ink-muted: #90ACAE;
-    --line: rgba(234, 243, 239, 0.12);
-    --court: #081A1F;
-    --court-2: #123640;
-    --ball: #E4FF3D;
-    --ball-ink: #10262B;
-    --paddle: #FF7A47;
-    --danger: #FF6B57;
-    --success: #4ADE80;
-    --link: #7FE7D4;
-  }
+/* ------------------------------------------------------------------
+   Tokens
+   Court blue + kitchen teal come from the court itself; the optic
+   yellow ball is the only action colour.
+------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+  --bg: #F5F7F2;
+  --surface: #FFFFFF;
+  --ink: #10222B;
+  --ink-soft: #456069;
+  --line: rgba(16, 34, 43, .16);
+  --court: #2456C7;
+  --kitchen: #1B7F6E;
+  --surround: #DCE7D6;
+  --band: #1F4DBA;
+  --ball: #F4D03F;
+  --on-ball: #10222B;
+  --focus: #2456C7;
+  --shadow: 0 30px 60px -30px rgba(16, 34, 43, .45);
 
-  * { -webkit-tap-highlight-color: transparent; }
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
 
-  body {
-    background: var(--bg);
-    color: var(--ink);
-    font-family: 'Inter', sans-serif;
-    transition: background-color .4s ease, color .4s ease;
-  }
-  .font-display { font-family: 'Space Grotesk', sans-serif; }
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A171D;
+  --surface: #11252D;
+  --ink: #EAF2EE;
+  --ink-soft: #9FB6BE;
+  --line: rgba(234, 242, 238, .16);
+  --court: #3B72E8;
+  --kitchen: #17786A;
+  --surround: #0F2B33;
+  --band: #1B3F94;
+  --focus: #F4D03F;
+  --shadow: 0 30px 60px -30px rgba(0, 0, 0, .8);
+}
 
-  ::selection { background: var(--ball); color: var(--ball-ink); }
+/* ------------------------------------------------------------------
+   Base
+------------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scroll-padding-top: 5rem; }
+html:has(dialog[open]) { overflow: hidden; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+img, svg { max-width: 100%; }
+h1, h2, h3, p { margin-top: 0; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
 
-  /* ---------- scrollbar for policy modal ---------- */
-  .thin-scroll::-webkit-scrollbar { width: 8px; }
-  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
-  .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+.wrap { width: min(1180px, 100% - 2.5rem); margin-inline: auto; }
+.skip {
+  position: absolute; left: 1rem; top: -4rem; z-index: 100;
+  background: var(--ball); color: var(--on-ball); font-weight: 700;
+  padding: .6rem 1rem; border-radius: 999px; text-decoration: none;
+}
+.skip:focus { top: 1rem; }
 
-  /* ---------- floating court background ---------- */
-  .court-lines {
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--line) 1px, transparent 1px);
-    background-size: 42px 42px;
-  }
+/* ------------------------------------------------------------------
+   Buttons (with a light sweep on hover)
+------------------------------------------------------------------ */
+.btn {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  font: inherit; font-weight: 700; line-height: 1.1;
+  padding: .85rem 1.5rem; border: 0; border-radius: 999px;
+  background: var(--ball); color: var(--on-ball);
+  text-decoration: none; cursor: pointer;
+  transition: transform .25s var(--ease-spring), box-shadow .25s ease;
+}
+.btn::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, .6) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+.btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 14px 26px -14px rgba(0, 0, 0, .6); }
+.btn:hover::after { transform: translateX(130%); transition: transform .7s var(--ease-out); }
+.btn:active { transform: translateY(0) scale(.98); }
+.btn-small { padding: .6rem 1.1rem; font-size: .95rem; }
+.btn-large { padding: 1.05rem 2rem; font-size: 1.1rem; }
+.btn-ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn-ghost::after { display: none; }
+.btn-ghost:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
 
-  @keyframes drift {
-    0%   { transform: translate(0, 0) rotate(0deg); }
-    50%  { transform: translate(14px, -22px) rotate(180deg); }
-    100% { transform: translate(0, 0) rotate(360deg); }
-  }
-  @keyframes drift-slow {
-    0%   { transform: translate(0, 0) rotate(0deg); }
-    50%  { transform: translate(-18px, 16px) rotate(-140deg); }
-    100% { transform: translate(0, 0) rotate(-280deg); }
-  }
-  @keyframes bob {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-  @keyframes paddle-swing {
-    0%, 100% { transform: rotate(-8deg); }
-    50% { transform: rotate(6deg); }
-  }
-  @keyframes pop-in {
-    0% { opacity: 0; transform: scale(.9) translateY(10px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
-  }
-  @keyframes rise-fade {
-    0% { opacity: 0; transform: translateY(16px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes shake {
-    10%, 90% { transform: translateX(-1px); }
-    20%, 80% { transform: translateX(2px); }
-    30%, 50%, 70% { transform: translateX(-4px); }
-    40%, 60% { transform: translateX(4px); }
-  }
-  @keyframes checkmark-draw {
-    from { stroke-dashoffset: 24; }
-    to { stroke-dashoffset: 0; }
-  }
-  @keyframes ball-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  @keyframes score-pulse {
-    0%, 100% { opacity: .55; }
-    50% { opacity: 1; }
-  }
+/* ------------------------------------------------------------------
+   Header
+------------------------------------------------------------------ */
+.site-header {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+  transition: box-shadow .3s ease;
+}
+.site-header.scrolled { box-shadow: 0 14px 30px -24px rgba(0, 0, 0, .6); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 4rem; transition: min-height .3s var(--ease-out); }
+.site-header.scrolled .bar { min-height: 3.5rem; }
+.brand { display: inline-flex; align-items: center; gap: .65rem; text-decoration: none; font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; }
+.brand svg { width: 2.15rem; height: 2.15rem; flex: none; transition: transform .5s var(--ease-spring); }
+.brand:hover svg { transform: rotate(-12deg) scale(1.1); }
+.nav { display: none; gap: 1.75rem; }
+.nav a { position: relative; text-decoration: none; font-weight: 500; color: var(--ink-soft); transition: color .2s; }
+.nav a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -5px; height: 2px; border-radius: 2px;
+  background: var(--ball); transform: scaleX(0); transform-origin: left;
+  transition: transform .35s var(--ease-out);
+}
+.nav a:hover { color: var(--ink); }
+.nav a:hover::after { transform: scaleX(1); }
+@media (min-width: 820px) { .nav { display: flex; } }
+.actions { display: flex; align-items: center; gap: .6rem; }
 
-  .anim-drift { animation: drift 9s ease-in-out infinite; }
-  .anim-drift-slow { animation: drift-slow 13s ease-in-out infinite; }
-  .anim-bob { animation: bob 4.5s ease-in-out infinite; }
-  .anim-paddle { animation: paddle-swing 3.2s ease-in-out infinite; transform-origin: 70% 85%; }
-  .anim-spin-slow { animation: ball-spin 6s linear infinite; }
-  .anim-pulse-soft { animation: score-pulse 3.5s ease-in-out infinite; }
-  .shake-el { animation: shake .5s; }
+/* scroll progress along the bottom edge of the header */
+.progress {
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 3px;
+  background: var(--ball); transform: scaleX(var(--p, 0)); transform-origin: left;
+  pointer-events: none;
+}
 
-  /* card content cross-fade when switching modes */
-  .mode-fade { transition: opacity .28s ease, transform .28s ease; }
-  .mode-leaving { opacity: 0; transform: translateY(6px) scale(.99); }
+.theme-toggle {
+  width: 2.6rem; height: 2.6rem; display: grid; place-items: center;
+  border-radius: 50%; border: 0; cursor: pointer;
+  background: transparent; color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: box-shadow .2s ease, transform .25s var(--ease-spring);
+}
+.theme-toggle:hover { box-shadow: inset 0 0 0 1.5px var(--ink); transform: rotate(-14deg); }
+.theme-toggle:active { transform: scale(.88); }
+.theme-toggle svg { width: 1.25rem; height: 1.25rem; }
+.theme-toggle .sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .moon { display: none; }
+.theme-toggle.spin svg { animation: iconin .65s var(--ease-spring); }
+@keyframes iconin { from { transform: rotate(-140deg) scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
 
-  /* smooth accordion for signup-only fields */
-  .accordion {
-    display: grid;
-    grid-template-rows: 0fr;
-    opacity: 0;
-    transition: grid-template-rows .45s cubic-bezier(.4,0,.2,1), opacity .35s ease;
+/* View-transition circle reveal for the theme switch */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+
+/* ------------------------------------------------------------------
+   Hero
+------------------------------------------------------------------ */
+.hero { position: relative; overflow-x: clip; padding: clamp(2.25rem, 6vw, 4.5rem) 0 clamp(3rem, 7vw, 6rem); }
+.hero-grid { position: relative; z-index: 1; display: grid; gap: clamp(2.25rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr); align-items: center; }
+@media (min-width: 900px) { .hero-grid { grid-template-columns: minmax(0, 1.02fr) minmax(0, 1fr); } }
+
+h1 {
+  font-size: clamp(2.7rem, 6.4vw, 5rem);
+  font-weight: 700; font-stretch: 88%;
+  line-height: .98; letter-spacing: -.035em;
+  margin-bottom: 1.25rem; text-wrap: balance;
+}
+.lede { font-size: 1.2rem; color: var(--ink-soft); max-width: 34rem; text-wrap: pretty; }
+
+.slot {
+  margin-top: 2rem; padding: 1rem;
+  display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr);   /* mobile: one per row */
+  background: var(--surface); border: 1px solid var(--line); border-radius: 22px;
+  max-width: 36rem;
+}
+@media (min-width: 560px) { .slot { grid-template-columns: repeat(2, minmax(0, 1fr)); } }  /* date + time side by side */
+@media (min-width: 560px) { .slot { grid-template-columns: 1.25fr 1fr 1fr; } }
+@media (min-width: 560px) { .slot { grid-template-columns: 1.25fr 1fr 1fr; } }
+.slot .btn { grid-column: 1 / -1; }
+.field label { display: block; font-size: .85rem; font-weight: 600; color: var(--ink-soft); margin: 0 0 .3rem .15rem; transition: color .2s; }
+.field:focus-within label { color: var(--ink); }
+.field input, .field select {
+  width: 100%; font: inherit; font-size: 1rem;
+  padding: .65rem .75rem; min-height: 2.9rem;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px;
+  transition: border-color .2s, box-shadow .25s, transform .25s var(--ease-spring);
+}
+.field input:hover, .field select:hover { border-color: var(--ink-soft); }
+.field input:focus, .field select:focus { border-color: var(--court); box-shadow: 0 0 0 4px color-mix(in srgb, var(--court) 25%, transparent); transform: translateY(-1px); outline: none; }
+
+/* floating pickleballs behind the hero */
+.float-ball {
+  position: absolute; z-index: 0; border-radius: 50%; pointer-events: none;
+  width: var(--s); height: var(--s);
+  background: radial-gradient(circle at 32% 30%, #FFEA85, var(--ball) 55%, #D3AC00);
+  box-shadow: 0 10px 16px -8px rgba(0, 0, 0, .35);
+}
+.fb1 { --s: 22px; top: 9%; left: 47%; }
+.fb2 { --s: 30px; top: 74%; left: 2%; }
+.fb3 { --s: 16px; top: 16%; right: 3%; }
+.fb4 { --s: 26px; bottom: 5%; left: 44%; }
+@media (max-width: 899px) { .fb1, .fb4 { display: none; } }
+
+/* The court */
+.court-wrap { position: relative; perspective: 1100px; }
+.court {
+  display: block; width: 100%; height: auto;
+  border-radius: 26px; box-shadow: var(--shadow);
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform .25s ease-out;
+}
+@media (min-width: 900px) { .court { transform: rotate(-2.5deg) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); } }
+.court .lines { fill: none; stroke: #fff; stroke-width: 3; stroke-linejoin: miter; stroke-linecap: butt; stroke-dasharray: 1 2; }
+.court .net { stroke-width: 2; opacity: .8; }
+.court text { font-family: var(--font-sans); font-size: 13px; font-weight: 600; fill: #fff; opacity: .85; }
+.ball-shadow { fill: rgba(0, 0, 0, .28); }
+.ripple { fill: none; stroke: #fff; stroke-width: 2; opacity: 0; }
+
+/* ------------------------------------------------------------------
+   Marquee
+------------------------------------------------------------------ */
+.marquee { overflow: hidden; border-block: 1px solid var(--line); background: var(--surface); padding: 1.1rem 0; }
+.marquee-track { display: flex; width: max-content; }
+.marquee-group { display: flex; align-items: center; gap: 2rem; padding-right: 2rem; }
+.marquee-group span { font-size: clamp(1.25rem, 2.6vw, 1.75rem); font-weight: 600; font-stretch: 88%; letter-spacing: -.02em; white-space: nowrap; }
+.ball-dot { width: .8rem; height: .8rem; border-radius: 50%; background: var(--ball); flex: none; box-shadow: inset -2px -2px 0 rgba(0, 0, 0, .12); }
+
+/* ------------------------------------------------------------------
+   Story
+------------------------------------------------------------------ */
+.story { padding: clamp(3rem, 8vw, 7rem) 0; }
+.story-grid { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .story-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 5rem; }
+  .story-head { position: sticky; top: 6rem; align-self: start; }
+}
+h2 {
+  font-size: clamp(2rem, 4.4vw, 3.4rem);
+  font-weight: 700; font-stretch: 90%;
+  line-height: 1.02; letter-spacing: -.03em;
+  margin-bottom: 1rem; text-wrap: balance;
+}
+.story-body { position: relative; padding-left: 2.25rem; font-family: var(--font-serif); font-size: clamp(1.15rem, 1.6vw, 1.32rem); line-height: 1.7; max-width: 40rem; }
+.story-body p { margin-bottom: 1.4em; text-wrap: pretty; }
+.story-body p:first-of-type::first-line { font-weight: 600; }
+
+/* a ball rolls down the line as you read */
+.rail { position: absolute; left: 0; top: .4rem; bottom: .4rem; width: 2px; background: var(--line); border-radius: 2px; }
+.rail::after { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: calc(var(--rp, 0) * 100%); background: var(--court); border-radius: 2px; }
+.rail-ball {
+  position: absolute; left: 50%; top: calc(var(--rp, 0) * 100%); z-index: 1;
+  width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: radial-gradient(circle at 32% 30%, #FFEA85, var(--ball) 55%, #D3AC00);
+  box-shadow: 0 4px 8px -3px rgba(0, 0, 0, .5);
+}
+.no-motion .rail-ball { display: none; }
+
+.band {
+  position: relative; overflow: hidden;
+  background: var(--band); color: #fff;
+  padding: clamp(3.5rem, 9vw, 7.5rem) 0;
+}
+.band::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(20% - 1px), rgba(255,255,255,.2) calc(20% - 1px), rgba(255,255,255,.2) calc(20% + 1px), transparent calc(20% + 1px)),
+    linear-gradient(90deg, transparent calc(80% - 1px), rgba(255,255,255,.2) calc(80% - 1px), rgba(255,255,255,.2) calc(80% + 1px), transparent calc(80% + 1px)),
+    linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.12) calc(50% - 1px), rgba(255,255,255,.12) calc(50% + 1px), transparent calc(50% + 1px)),
+    linear-gradient(0deg, transparent calc(50% - 1px), rgba(255,255,255,.2) calc(50% - 1px), rgba(255,255,255,.2) calc(50% + 1px), transparent calc(50% + 1px));
+}
+.band p {
+  position: relative; margin: 0; max-width: 20ch;
+  font-size: clamp(2rem, 5.6vw, 4.4rem); font-weight: 700; font-stretch: 88%;
+  line-height: 1.02; letter-spacing: -.03em; text-wrap: balance;
+}
+.band p .kicker-line { display: block; color: var(--ball); }
+
+/* ------------------------------------------------------------------
+   What to expect
+------------------------------------------------------------------ */
+.welcome { padding: clamp(3.5rem, 8vw, 7rem) 0; }
+.welcome h2 { max-width: 20ch; margin-bottom: clamp(2rem, 5vw, 3.5rem); }
+.pillars { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; } }
+.pillar { position: relative; padding: .25rem 0 .25rem 1.5rem; }
+@media (min-width: 820px) { .pillar { padding-right: 2rem; } }
+.pillar::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; border-radius: 2px;
+  background: var(--court); transform-origin: top;
+  transition: transform .9s var(--ease-out) .15s;
+}
+.pillar h3 { font-size: 1.45rem; font-weight: 650; letter-spacing: -.02em; line-height: 1.15; margin-bottom: .6rem; text-wrap: balance; }
+.pillar p { color: var(--ink-soft); margin: 0; max-width: 26rem; text-wrap: pretty; }
+
+/* ------------------------------------------------------------------
+   How it works
+------------------------------------------------------------------ */
+.how { padding: clamp(3rem, 7vw, 6rem) 0; background: var(--surface); border-block: 1px solid var(--line); }
+.how h2 { margin-bottom: 2.25rem; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem; counter-reset: step; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.5rem; } }
+.steps li { position: relative; padding-left: 4rem; counter-increment: step; }
+.steps li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: 0;
+  width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--ball); color: var(--on-ball);
+  font-weight: 700; font-size: 1.15rem;
+  transition: transform .7s var(--ease-spring) .1s;
+}
+@media (min-width: 820px) {
+  .steps li:not(:last-child)::after {
+    content: ""; position: absolute; top: 1.3rem; left: 3.3rem;
+    width: calc(100% + 2.5rem - 3.3rem - .5rem); height: 2px;
+    background: repeating-linear-gradient(90deg, var(--line) 0 8px, transparent 8px 14px);
+    transform-origin: left; transition: transform 1s var(--ease-out) .5s;
   }
-  .accordion.open { grid-template-rows: 1fr; opacity: 1; }
-  .accordion > .accordion-inner { overflow: hidden; min-height: 0; }
+}
+.steps h3 { font-size: 1.25rem; font-weight: 650; letter-spacing: -.015em; margin: .35rem 0 .35rem; }
+.steps p { margin: 0; color: var(--ink-soft); text-wrap: pretty; }
 
-  /* inputs */
-  .field-input {
-    background: var(--surface-2);
-    border: 1.5px solid var(--line);
-    color: var(--ink);
-    transition: border-color .2s ease, box-shadow .2s ease, background-color .3s ease;
-  }
-  .field-input:focus {
-    outline: none;
-    border-color: var(--court-2);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--court-2) 18%, transparent);
-  }
-  html.dark .field-input:focus {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--ball) 18%, transparent);
-    border-color: var(--ball);
-  }
-  .field-input.field-error { border-color: var(--danger); }
+/* ------------------------------------------------------------------
+   Final call
+------------------------------------------------------------------ */
+.final { padding: clamp(4rem, 9vw, 7.5rem) 0; }
+.final-inner { display: grid; gap: 1.5rem; justify-items: start; }
+.final h2 { max-width: 16ch; margin: 0; }
+.final p { color: var(--ink-soft); font-size: 1.15rem; max-width: 32rem; margin: 0; }
 
-  .btn-primary {
-    background: var(--court);
-    color: #F7F5EE;
-    transition: transform .15s ease, box-shadow .25s ease, background-color .3s ease, opacity .3s ease;
-    box-shadow: 0 10px 24px -10px rgba(15,44,52,.55);
-  }
-  html.dark .btn-primary { background: var(--ball); color: var(--ball-ink); box-shadow: 0 10px 26px -10px rgba(228,255,61,.35); }
-  .btn-primary:not(:disabled):hover { transform: translateY(-2px); }
-  .btn-primary:not(:disabled):active { transform: translateY(0) scale(.98); }
-  .btn-primary:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* ------------------------------------------------------------------
+   Footer
+------------------------------------------------------------------ */
+.footer { border-top: 1px solid var(--line); padding: 2.5rem 0 calc(2.5rem + env(safe-area-inset-bottom)); }
+.footer-grid { display: grid; gap: 2rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 820px) { .footer-grid { grid-template-columns: 1.3fr 1fr 1fr; } }
+.footer h3 { font-size: .95rem; font-weight: 650; margin-bottom: .6rem; color: var(--ink-soft); }
+.footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.footer a { text-decoration: none; }
+.footer ul a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.footer .about { color: var(--ink-soft); max-width: 22rem; margin: .9rem 0 0; }
+.legal { margin-top: 2rem; color: var(--ink-soft); font-size: .9rem; display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; }
+.powered { font-weight: 600; color: var(--ink); }
+.powered a { text-underline-offset: 3px; }
+.ios-hint { color: var(--ink-soft); font-size: .9rem; max-width: 18rem; margin: .5rem 0 0; }
+[hidden] { display: none !important; }
 
-  .btn-ghost {
-    border: 1.5px solid var(--line);
-    color: var(--ink);
-    transition: border-color .2s ease, background-color .2s ease, transform .15s ease;
-  }
-  .btn-ghost:hover { background: var(--surface-2); transform: translateY(-1px); }
-  .btn-ghost:active { transform: translateY(0) scale(.98); }
+/* ------------------------------------------------------------------
+   Login / guest modal (opened by the header "Book a court" button)
+------------------------------------------------------------------ */
+dialog.modal {
+  width: min(31rem, calc(100% - 1.5rem)); max-height: calc(100dvh - 1.5rem);
+  padding: 0; border: 0; background: transparent; color: var(--ink); overflow: visible;
+}
+dialog.modal::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
+.modal-panel {
+  position: relative; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+  padding: 2rem 1.75rem 1.5rem;
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .7);
+}
+/* faint court lines behind the modal content */
+.modal-panel::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(85% - 1px), var(--line) calc(85% - 1px), var(--line) calc(85% + 1px), transparent calc(85% + 1px)),
+    linear-gradient(0deg, transparent calc(85% - 1px), var(--line) calc(85% - 1px), var(--line) calc(85% + 1px), transparent calc(85% + 1px));
+  opacity: .7;
+}
+.modal-panel > * { position: relative; }
+.modal-close {
+  position: absolute; top: .9rem; right: .9rem; width: 2.5rem; height: 2.5rem;
+  display: grid; place-items: center; border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: transform .35s var(--ease-spring), box-shadow .2s;
+}
+.modal-close:hover { transform: rotate(90deg); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.modal-close svg { width: 1.1rem; height: 1.1rem; }
 
-  .icon-btn { transition: transform .2s ease, background-color .2s ease; }
-  .icon-btn:hover { transform: scale(1.08); }
-  .icon-btn:active { transform: scale(.94); }
+.modal-ball { position: relative; width: 2.6rem; height: 3.4rem; margin-bottom: .75rem; }
+.mb {
+  position: absolute; left: 0; bottom: .55rem; width: 2.4rem; height: 2.4rem; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #FFEA85, var(--ball) 55%, #D3AC00);
+}
+.mb-shadow { position: absolute; left: .15rem; bottom: .25rem; width: 2.1rem; height: .5rem; border-radius: 50%; background: rgba(0, 0, 0, .22); }
 
-  /* eye-toggle buttons are vertically centered with a transform, so their
-     hover/active states must include that translate or they'll jump position */
-  .toggle-eye.icon-btn { transform: translateY(-50%); }
-  .toggle-eye.icon-btn:hover { transform: translateY(-50%) scale(1.1); }
-  .toggle-eye.icon-btn:active { transform: translateY(-50%) scale(.92); }
+.modal h2 { font-size: clamp(1.7rem, 5vw, 2.2rem); margin-bottom: .5rem; padding-right: 2.5rem; }
+.modal-desc { color: var(--ink-soft); margin-bottom: 1.4rem; text-wrap: pretty; }
 
-  .text-link { color: var(--link); }
+.choices { display: grid; gap: .75rem; }
+.choice {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.1rem; border-radius: 18px; text-decoration: none;
+  background: var(--bg); color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: transform .3s var(--ease-spring), box-shadow .2s, background .2s;
+}
+.choice:hover { transform: translateY(-3px); box-shadow: inset 0 0 0 1.5px var(--ink), 0 16px 28px -20px rgba(0, 0, 0, .7); }
+.choice:active { transform: scale(.98); }
+.choice-primary { background: var(--ball); color: var(--on-ball); box-shadow: none; }
+.choice-primary:hover { box-shadow: 0 16px 28px -16px rgba(0, 0, 0, .6); }
+.choice-icon { width: 2.75rem; height: 2.75rem; flex: none; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.choice-primary .choice-icon { background: rgba(16, 34, 43, .13); }
+.choice-icon svg { width: 1.3rem; height: 1.3rem; }
+.choice strong { display: block; font-size: 1.12rem; line-height: 1.2; letter-spacing: -.01em; }
+.choice small { display: block; font-size: .92rem; color: var(--ink-soft); }
+.choice-primary small { color: rgba(16, 34, 43, .75); }
+.choice-arrow { margin-left: auto; width: 1.25rem; height: 1.25rem; flex: none; transition: transform .3s var(--ease-out); }
+.choice:hover .choice-arrow { transform: translateX(6px); }
+.modal-foot { margin: 1.25rem 0 0; text-align: center; color: var(--ink-soft); font-size: .95rem; }
+.modal-foot a { font-weight: 600; color: var(--ink); text-underline-offset: 3px; }
 
-  /* custom checkbox */
-  .policy-box {
-    width: 22px; height: 22px; border-radius: 7px;
-    border: 1.8px solid var(--line);
-    background: var(--surface-2);
-    transition: border-color .2s ease, background-color .25s ease, box-shadow .25s ease;
-  }
-  .policy-box.agreed {
-    background: var(--court);
-    border-color: var(--court);
-  }
-  html.dark .policy-box.agreed { background: var(--ball); border-color: var(--ball); }
-  .policy-box svg { stroke-dasharray: 24; stroke-dashoffset: 24; }
-  .policy-box.agreed svg { animation: checkmark-draw .35s ease forwards .05s; }
+/* ------------------------------------------------------------------
+   Motion
+   Everything below is skipped for people who prefer reduced motion.
+------------------------------------------------------------------ */
 
-  /* strength meter */
-  .strength-track { background: var(--line); }
-  .strength-fill { transition: width .35s ease, background-color .35s ease; }
+/* Scroll reveals (set up by JS) */
+.js:not(.no-motion) .reveal {
+  opacity: 0; transform: translateY(28px);
+  transition: opacity .8s var(--ease-out), transform .9s var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+.js:not(.no-motion) .reveal.in { opacity: 1; transform: none; }
+.js:not(.no-motion) .reveal-pop { transform: translateY(24px) scale(.94); }
+.js:not(.no-motion) .reveal-pop.in { transform: none; }
+
+/* Word-by-word headline rise */
+.js:not(.no-motion) .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .14em; margin-bottom: -.14em; }
+.js:not(.no-motion) .w > span {
+  display: inline-block; transform: translateY(112%) rotate(4deg); transform-origin: left bottom;
+  transition: transform .9s var(--ease-out); transition-delay: calc(var(--i, 0) * 70ms);
+}
+.js:not(.no-motion) .split.in .w > span { transform: none; }
+
+/* Pillars, steps, band */
+.js:not(.no-motion) .pillar:not(.in)::before { transform: scaleY(0); }
+.js:not(.no-motion) .steps li:not(.in)::before { transform: scale(0) rotate(-90deg); }
+.js:not(.no-motion) .steps li:not(.in)::after { transform: scaleX(0); }
+.js:not(.no-motion) .band::before { opacity: 0; transform: scale(1.08); transition: opacity 1.2s ease .1s, transform 1.6s var(--ease-out); }
+.js:not(.no-motion) .band.in::before { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* header entrance */
+  .site-header { animation: slide-down .8s var(--ease-out) both; }
+  .site-header .brand, .site-header .nav a, .site-header .actions > * { animation: drop-in .7s var(--ease-out) backwards; }
+  .site-header .nav a:nth-child(1) { animation-delay: .25s; } .site-header .nav a:nth-child(2) { animation-delay: .32s; } .site-header .nav a:nth-child(3) { animation-delay: .39s; }
+  .site-header .actions > :nth-child(1) { animation-delay: .4s; } .site-header .actions > :nth-child(2) { animation-delay: .48s; }
+  .site-header .brand { animation-delay: .15s; }
+
+  /* header Book button: a light sweep every few seconds */
+  .btn-shine::after { animation: shine 5.5s ease-in-out 3s infinite; }
+
+  /* court draws itself, then the ball lands with ripples */
+  .court .lines { stroke-dashoffset: 1; animation: draw 1.1s cubic-bezier(.6, 0, .2, 1) forwards; animation-delay: calc(var(--i) * .13s + .15s); }
+  .court .ball { animation: drop 1.25s cubic-bezier(.3, 0, .4, 1) 1.5s both; }
+  .court .ball-shadow { animation: shade 1.25s ease-in 1.5s both; transform-box: fill-box; transform-origin: center; }
+  .court .ripple { transform-box: fill-box; transform-origin: center; animation: ripple 1.25s ease-out 1.5s both; }
+  .court text { animation: fade-in .8s ease 1s both; }
+
+  /* floating background balls */
+  .float-ball { animation: float 7s ease-in-out infinite alternate; }
+  .fb2 { animation-duration: 9s; animation-delay: -2s; }
+  .fb3 { animation-duration: 6s; animation-delay: -4s; }
+  .fb4 { animation-duration: 8s; animation-delay: -1s; }
+
+  /* marquee */
+  .marquee-track { animation: marquee 38s linear infinite; }
+  .marquee:hover .marquee-track { animation-play-state: paused; }
+
+  /* pulsing ring on the closing call to action */
+  .btn-pulse { animation: ring 2.6s ease-out infinite; }
 
   /* modal */
-  .modal-backdrop { background: rgba(8, 20, 23, .55); backdrop-filter: blur(3px); }
-  .modal-panel { animation: pop-in .28s cubic-bezier(.2,.9,.3,1.15); }
+  dialog.modal[open]::backdrop { animation: fade-in .3s ease both; }
+  dialog.modal[open] .modal-panel { animation: pop-in .55s var(--ease-spring) backwards; }
+  dialog.modal[open] .mb { animation: bounce 1.1s cubic-bezier(.3, 0, .4, 1) .3s both; }
+  dialog.modal[open] .mb-shadow { animation: shade 1.1s ease-in .3s both; transform-origin: center; }
+  dialog.modal[open] .modal-panel > :not(.modal-close):not(.modal-ball):not(.choices) { animation: rise .6s var(--ease-out) backwards; }
+  dialog.modal[open] h2 { animation-delay: .18s; }
+  dialog.modal[open] .modal-desc { animation-delay: .26s; }
+  dialog.modal[open] .choice:nth-child(1) { animation: rise .6s var(--ease-out) .34s backwards; }
+  dialog.modal[open] .choice:nth-child(2) { animation: rise .6s var(--ease-out) .42s backwards; }
+  dialog.modal[open] .modal-foot { animation-delay: .5s; }
+  dialog.modal.closing[open]::backdrop { animation: fade-out .24s ease forwards; }
+  dialog.modal.closing[open] .modal-panel { animation: pop-out .26s ease-in forwards; }
+  dialog.modal.closing[open] .modal-panel > * { animation: none; }
+  .choice:hover .choice-icon svg { animation: wiggle .5s ease; }
+}
 
-  /* toast */
-  .toast { animation: rise-fade .3s ease; }
+@keyframes slide-down { from { transform: translateY(-100%); } to { transform: none; } }
+@keyframes drop-in { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+@keyframes shine { 0%, 70% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-out { to { opacity: 0; } }
+@keyframes drop {
+  0%   { transform: translateY(-150px); opacity: 0; }
+  10%  { opacity: 1; }
+  42%  { transform: translateY(0); }
+  58%  { transform: translateY(-38px); }
+  72%  { transform: translateY(0); }
+  84%  { transform: translateY(-11px); }
+  100% { transform: translateY(0); }
+}
+@keyframes shade {
+  0%   { opacity: 0; transform: scale(.4); }
+  42%  { opacity: 1; transform: scale(1); }
+  58%  { transform: scale(.75); }
+  72%  { transform: scale(1); }
+  84%  { transform: scale(.9); }
+  100% { transform: scale(1); }
+}
+@keyframes ripple {
+  0%, 40%  { opacity: 0; transform: scale(.4); }
+  42%      { opacity: .85; transform: scale(.4); }
+  62%      { opacity: 0; transform: scale(2.6); }
+  71%      { opacity: 0; transform: scale(.4); }
+  73%      { opacity: .6; transform: scale(.4); }
+  90%, 100% { opacity: 0; transform: scale(2); }
+}
+@keyframes float {
+  from { transform: translate(0, 0) rotate(0deg); }
+  50%  { transform: translate(14px, -22px) rotate(90deg); }
+  to   { transform: translate(-10px, 12px) rotate(180deg); }
+}
+@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes ring {
+  0%   { box-shadow: 0 0 0 0 rgba(244, 208, 63, .65); }
+  70%, 100% { box-shadow: 0 0 0 22px rgba(244, 208, 63, 0); }
+}
+@keyframes pop-in { from { opacity: 0; transform: translateY(36px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes pop-out { to { opacity: 0; transform: translateY(20px) scale(.95); } }
+@keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes bounce {
+  0%   { transform: translateY(-46px); opacity: 0; }
+  12%  { opacity: 1; }
+  40%  { transform: translateY(0); }
+  56%  { transform: translateY(-16px); }
+  70%  { transform: translateY(0); }
+  84%  { transform: translateY(-5px); }
+  100% { transform: translateY(0); }
+}
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 60% { transform: rotate(10deg); } }
 
-  /* tab pill slider */
-  .tab-pill {
-    transition: transform .35s cubic-bezier(.65,0,.35,1);
-  }
-
-  /* hide number input spinners for phone */
-  input[type=number]::-webkit-outer-spin-button,
-  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type=number] { -moz-appearance: textfield; }
-
-  @media (prefers-reduced-motion: reduce) {
-    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
-  }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}
 </style>
 </head>
 
-<body class="font-body min-h-screen relative overflow-x-hidden">
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
 
-  <!-- ============ Decorative animated backdrop ============ -->
-  <div class="fixed inset-0 -z-10 court-lines opacity-[0.35] dark:opacity-[0.25]"></div>
-  <div class="fixed -top-10 -left-10 w-40 h-40 rounded-full anim-drift opacity-20" style="background: radial-gradient(circle at 35% 30%, var(--ball), transparent 70%);"></div>
-  <div class="fixed top-1/3 -right-16 w-56 h-56 rounded-full anim-drift-slow opacity-20" style="background: radial-gradient(circle at 40% 40%, var(--paddle), transparent 70%);"></div>
-  <div class="fixed bottom-0 left-1/4 w-44 h-44 rounded-full anim-bob opacity-10" style="background: radial-gradient(circle at 50% 50%, var(--court-2), transparent 70%);"></div>
+<!-- Shared logo mark -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="mark" viewBox="0 0 48 48">
+    <rect width="48" height="48" rx="12" fill="#2456C7"/>
+    <g fill="none" stroke="#fff" stroke-width="2">
+      <rect x="8" y="14" width="32" height="20"/>
+      <path d="M16 14v20M32 14v20M8 24h8M32 24h8"/>
+      <path d="M24 12v24" stroke-opacity=".7"/>
+    </g>
+    <circle cx="35" cy="19" r="4.4" fill="#F4D03F"/>
+  </symbol>
+</svg>
 
-  <!-- ============ Top bar ============ -->
-  <header class="relative z-20 flex items-center justify-between px-5 sm:px-8 py-5 max-w-7xl mx-auto">
-    <div class="flex items-center gap-2.5">
-      <div class="w-9 h-9 rounded-full grid place-items-center anim-spin-slow" style="background: var(--ball);">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.4"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/><circle cx="7" cy="7" r="1.05" fill="#10262B"/><circle cx="17" cy="7" r="1.05" fill="#10262B"/><circle cx="7" cy="17" r="1.05" fill="#10262B"/><circle cx="17" cy="17" r="1.05" fill="#10262B"/></svg>
-      </div>
-      <span class="font-display font-semibold text-lg tracking-tight">NexStepJS</span>
-    </div>
-
-    <div class="hidden sm:flex items-center gap-2 rounded-full px-3.5 py-1.5" style="background: var(--surface-2); border: 1px solid var(--line);">
-      <span class="relative flex h-2 w-2">
-        <span class="absolute inline-flex h-full w-full rounded-full opacity-60 anim-pulse-soft" style="background: var(--success);"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2" style="background: var(--success);"></span>
-      </span>
-      <span class="text-xs font-medium" style="color: var(--ink-muted);"><span id="onlineCount" class="font-semibold" style="color: var(--ink);">—</span> playing on NexStepJS right now</span>
-    </div>
-
-    <div class="flex items-center gap-2">
-      <button id="installBtn" class="hidden btn-ghost rounded-full px-4 py-2 text-sm font-medium">Install app</button>
-      <button id="themeToggle" aria-label="Toggle dark mode" class="icon-btn w-10 h-10 rounded-full grid place-items-center border" style="border-color: var(--line);">
-        <svg id="iconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
-        <svg id="iconMoon" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 1 1 9.3 3.6a7 7 0 0 0 11.1 11.1Z"/></svg>
+<header class="site-header" id="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="The Court Club, home">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>The Court Club</span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      <a href="#story">Our story</a>
+      <a href="#welcome">What to expect</a>
+      <a href="#how">How booking works</a>
+    </nav>
+    <div class="actions">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to dark mode">
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       </button>
+      <!-- Opens the login / guest modal when nobody is signed in -->
+      <a class="btn btn-small btn-shine" id="header-book" href="book/" data-book data-book-modal aria-haspopup="dialog">Book a court</a>
     </div>
-  </header>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</header>
 
-  <!-- ============ Main layout ============ -->
-  <main class="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 pb-16 grid lg:grid-cols-2 gap-10 items-center min-h-[calc(100vh-96px)]">
+<main id="main">
 
-    <!-- ---------- Left: hero / court scene (desktop only) ---------- -->
-    <section class="hidden lg:flex flex-col justify-center relative h-[560px] rounded-[32px] overflow-hidden px-10" style="background: linear-gradient(160deg, var(--court), var(--court-2));">
-      <div class="absolute inset-0 opacity-[0.14]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 46px 46px;"></div>
-      <!-- NexStepJS line -->
-      <div class="absolute left-10 right-10 top-1/2 -translate-y-1/2 h-[2px]" style="background: rgba(255,255,255,.25);"></div>
-      <div class="absolute left-1/2 top-10 bottom-10 -translate-x-1/2 w-[2px]" style="background: rgba(255,255,255,.25);"></div>
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <span class="float-ball fb1" aria-hidden="true"></span>
+    <span class="float-ball fb2" aria-hidden="true"></span>
+    <span class="float-ball fb3" aria-hidden="true"></span>
+    <span class="float-ball fb4" aria-hidden="true"></span>
 
-      <!-- floating ball -->
-      <div class="absolute top-16 right-16 w-16 h-16 rounded-full anim-bob grid place-items-center shadow-2xl" style="background: var(--ball);">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="7" cy="7" r="1.1" fill="#10262B"/><circle cx="17" cy="7" r="1.1" fill="#10262B"/><circle cx="7" cy="17" r="1.1" fill="#10262B"/><circle cx="17" cy="17" r="1.1" fill="#10262B"/><circle cx="12" cy="12" r="1.1" fill="#10262B"/><circle cx="12" cy="5" r="1.1" fill="#10262B"/><circle cx="12" cy="19" r="1.1" fill="#10262B"/><circle cx="5" cy="12" r="1.1" fill="#10262B"/><circle cx="19" cy="12" r="1.1" fill="#10262B"/></svg>
+    <div class="wrap hero-grid">
+      <div>
+        <h1 id="hero-title" data-split data-split-now>Play somewhere that feels like family.</h1>
+        <p class="lede reveal" style="--d:350ms">Pickleball courts in Cebu, built by a family who wanted everyone to feel welcome. Whether it's your first paddle or your hundredth game, there's a court for you.</p>
+
+        <form class="slot reveal" style="--d:520ms" action="book/" method="get" data-book-form aria-label="Find an open court">
+          <div class="field">
+            <label for="f-date">Date</label>
+            <input id="f-date" name="date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="f-time">Time of day</label>
+            <select id="f-time" name="time">
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
+              <option value="evening" selected>Evening</option>
+            </select>
+          </div>
+          <button class="btn" type="submit">See open courts</button>
+        </form>
       </div>
 
-      <!-- paddle -->
-      <div class="absolute bottom-16 right-24 anim-paddle">
-        <svg width="86" height="120" viewBox="0 0 86 120" fill="none">
-          <rect x="35" y="72" width="10" height="40" rx="4" fill="#E9DFC8"/>
-          <ellipse cx="40" cy="42" rx="38" ry="44" fill="var(--paddle)" />
-          <ellipse cx="40" cy="42" rx="38" ry="44" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3"/>
+      <div class="court-wrap reveal reveal-pop" style="--d:250ms" id="court-wrap">
+        <svg class="court" viewBox="0 0 520 300" role="img" aria-label="A pickleball court seen from above, with a ball landing on one side">
+          <rect width="520" height="300" fill="var(--surround)"/>
+          <rect x="40" y="50" width="440" height="200" fill="var(--court)"/>
+          <rect x="190" y="50" width="140" height="200" fill="var(--kitchen)"/>
+          <text x="260" y="72" text-anchor="middle">the kitchen</text>
+
+          <g class="lines">
+            <path pathLength="1" style="--i:0" d="M40 50H480V250H40Z"/>
+            <path pathLength="1" style="--i:1" d="M190 50V250"/>
+            <path pathLength="1" style="--i:2" d="M330 50V250"/>
+            <path pathLength="1" style="--i:3" d="M40 150H190"/>
+            <path pathLength="1" style="--i:4" d="M330 150H480"/>
+            <path pathLength="1" style="--i:5" class="net" d="M260 40V260"/>
+          </g>
+
+          <circle class="ripple" cx="392" cy="212" r="14"/>
+          <ellipse class="ball-shadow" cx="392" cy="212" rx="15" ry="5"/>
+          <g class="ball">
+            <circle cx="392" cy="200" r="13" fill="#F4D03F"/>
+            <g fill="#10222B" fill-opacity=".38">
+              <circle cx="392" cy="194" r="2"/><circle cx="386" cy="200" r="2"/><circle cx="398" cy="200" r="2"/>
+              <circle cx="392" cy="206" r="2"/><circle cx="387.5" cy="195.5" r="1.4"/><circle cx="396.5" cy="204.5" r="1.4"/>
+            </g>
+          </g>
         </svg>
       </div>
-
-      <div class="relative anim-pulse-soft mb-3 text-white/70 text-sm font-medium tracking-wide">Court 3 · Open Play</div>
-      <h1 class="relative font-display text-white text-[2.6rem] leading-[1.08] font-semibold max-w-sm">
-        Book your next game before the kitchen fills up.
-      </h1>
-      <p class="relative mt-4 text-white/70 max-w-xs text-[15px] leading-relaxed">
-        Reserve courts, track your rating, and rally with your regular four — all from one account.
-      </p>
-
-      <div class="relative mt-10 flex items-center gap-4 text-white/80 text-sm">
-        <div class="flex -space-x-2">
-          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:#E9DFC8"></div>
-          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:var(--ball)"></div>
-          <div class="w-8 h-8 rounded-full border-2 border-court" style="background:var(--paddle)"></div>
-        </div>
-        <span>Joined by 4,200+ players this season</span>
-      </div>
-    </section>
-
-    <!-- ---------- Right: auth card ---------- -->
-    <section class="flex justify-center lg:justify-end">
-      <div class="w-full max-w-[440px] rounded-[28px] p-7 sm:p-9 relative" style="background: var(--surface); box-shadow: 0 30px 60px -25px rgba(15,44,52,.35);">
-
-        <!-- tab pill switcher -->
-        <div class="relative grid grid-cols-2 rounded-full p-1 mb-7" style="background: var(--surface-2);">
-          <div id="tabPill" class="tab-pill absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full" style="background: var(--court);"></div>
-          <button type="button" id="tabLogin" class="relative z-10 py-2.5 rounded-full text-sm font-semibold font-display transition-colors">Log In</button>
-          <button type="button" id="tabSignup" class="relative z-10 py-2.5 rounded-full text-sm font-semibold font-display transition-colors">Sign Up</button>
-        </div>
-
-        <div id="cardContent" class="mode-fade">
-          <h2 id="formTitle" class="font-display text-2xl font-semibold mb-1">Welcome back</h2>
-          <p id="formSubtitle" class="text-sm mb-6" style="color: var(--ink-muted);">Log in to book your next court.</p>
-
-          <form id="authForm" novalidate class="space-y-4">
-
-            <!-- Full name (signup only) -->
-            <div id="rowFullName" class="accordion">
-              <div class="accordion-inner space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Full name</label>
-                <input type="text" id="fullName" autocomplete="name" placeholder="Alex Rivera"
-                  class="field-input w-full rounded-xl px-4 py-3 text-[15px]" />
-                <p class="err-msg text-xs hidden" style="color: var(--danger);">Please enter your full name.</p>
-              </div>
-            </div>
-
-            <!-- Email (shared) -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Email</label>
-              <input type="email" id="email" autocomplete="email" placeholder="you@example.com"
-                class="field-input w-full rounded-xl px-4 py-3 text-[15px]" />
-              <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter a valid email address.</p>
-            </div>
-
-            <!-- Contact number (signup only) -->
-            <div id="rowContact" class="accordion">
-              <div class="accordion-inner space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Contact number</label>
-                <div class="flex gap-2">
-                  <select id="countryCode" class="field-input rounded-xl px-2.5 py-3 text-[15px] w-[118px]">
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+1">🇨🇦 +1</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+61">🇦🇺 +61</option>
-                    <option value="+63" selected>🇵🇭 +63</option>
-                    <option value="+65">🇸🇬 +65</option>
-                    <option value="+60">🇲🇾 +60</option>
-                    <option value="+81">🇯🇵 +81</option>
-                    <option value="+82">🇰🇷 +82</option>
-                    <option value="+91">🇮🇳 +91</option>
-                    <option value="+971">🇦🇪 +971</option>
-                    <option value="+49">🇩🇪 +49</option>
-                    <option value="+33">🇫🇷 +33</option>
-                    <option value="+34">🇪🇸 +34</option>
-                    <option value="+52">🇲🇽 +52</option>
-                  </select>
-                  <input type="tel" id="phoneNumber" inputmode="numeric" autocomplete="tel-national" placeholder="9171234567"
-                    class="field-input flex-1 min-w-0 rounded-xl px-4 py-3 text-[15px]" />
-                </div>
-                <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter a valid contact number.</p>
-              </div>
-            </div>
-
-            <!-- Password (shared) -->
-            <div class="space-y-1.5">
-              <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Password</label>
-              <div class="relative">
-                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••" minlength="6" maxlength="25"
-                  class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
-                <button type="button" data-target="password" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
-                  <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
-                  <svg class="eye-closed hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.7a3.2 3.2 0 0 0 4.5 4.5M7.3 7.5C4.5 9 2.8 12 2.8 12S6.3 19 12.8 19c1.7 0 3.1-.4 4.3-1.1M17.4 15.9C19.9 14.2 21.2 12 21.2 12s-1.2-2.4-3.6-4.2"/></svg>
-                </button>
-              </div>
-              <p class="err-msg text-xs hidden" style="color: var(--danger);">Enter your password.</p>
-            </div>
-
-            <!-- Password strength + confirm (signup only) -->
-            <div id="rowPasswordSecurity" class="accordion">
-              <div class="accordion-inner space-y-4">
-
-                <div class="space-y-2 pt-1">
-                  <div class="h-1.5 w-full rounded-full strength-track overflow-hidden">
-                    <div id="strengthFill" class="strength-fill h-full w-0 rounded-full"></div>
-                  </div>
-                  <div class="flex items-center justify-between">
-                    <span id="strengthLabel" class="text-xs font-medium" style="color: var(--ink-muted);">Password strength</span>
-                  </div>
-                  <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs" style="color: var(--ink-muted);">
-                    <li class="req-item flex items-center gap-1.5" data-rule="len"><span class="req-dot"></span>6–25 characters</li>
-                    <li class="req-item flex items-center gap-1.5" data-rule="upper"><span class="req-dot"></span>Uppercase letter</li>
-                    <li class="req-item flex items-center gap-1.5" data-rule="lower"><span class="req-dot"></span>Lowercase letter</li>
-                    <li class="req-item flex items-center gap-1.5" data-rule="num"><span class="req-dot"></span>Number</li>
-                    <li class="req-item flex items-center gap-1.5" data-rule="sym"><span class="req-dot"></span>Symbol</li>
-                  </ul>
-                </div>
-
-                <div class="space-y-1.5">
-                  <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Confirm password</label>
-                  <div class="relative">
-                    <input type="password" id="confirmPassword" autocomplete="new-password" placeholder="••••••••" minlength="6" maxlength="25"
-                      class="field-input w-full rounded-xl pl-4 pr-11 py-3 text-[15px]" />
-                    <button type="button" data-target="confirmPassword" class="toggle-eye icon-btn absolute right-3 top-1/2" aria-label="Show password" aria-pressed="false">
-                      <svg class="eye-open" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3.2"/></svg>
-                      <svg class="eye-closed hidden" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.7a3.2 3.2 0 0 0 4.5 4.5M7.3 7.5C4.5 9 2.8 12 2.8 12S6.3 19 12.8 19c1.7 0 3.1-.4 4.3-1.1M17.4 15.9C19.9 14.2 21.2 12 21.2 12s-1.2-2.4-3.6-4.2"/></svg>
-                    </button>
-                  </div>
-                  <p id="matchMsg" class="text-xs hidden"></p>
-                </div>
-              </div>
-            </div>
-
-            <!-- Remember me (login only) -->
-            <div id="rowRemember" class="accordion open">
-              <div class="accordion-inner flex items-center justify-between pt-1">
-                <label class="flex items-center gap-2.5 cursor-pointer select-none text-sm">
-                  <input type="checkbox" id="rememberMe" class="peer sr-only" />
-                  <span class="w-9 h-5 rounded-full relative transition-colors" style="background: var(--line);" id="rememberTrack">
-                    <span class="absolute top-[3px] left-[3px] w-[14px] h-[14px] rounded-full bg-white transition-transform" id="rememberDot"></span>
-                  </span>
-                  Remember me
-                </label>
-                <button type="button" id="forgotBtn" class="text-link text-sm font-semibold hover:underline">Forgot password?</button>
-              </div>
-            </div>
-
-            <!-- Privacy policy (signup only) -->
-            <div id="rowPolicy" class="accordion">
-              <div class="accordion-inner pt-1">
-                <button type="button" id="policyRow" class="w-full flex items-start gap-3 text-left group">
-                  <span id="policyBox" class="policy-box shrink-0 grid place-items-center mt-0.5">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"/></svg>
-                  </span>
-                  <span class="text-sm leading-snug" style="color: var(--ink-muted);">
-                    I've read and agree to the <span class="font-semibold underline" style="color: var(--ink);">Privacy Policy</span> and Terms of Play.
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <button type="submit" id="submitBtn" class="btn-primary w-full rounded-xl py-3.5 font-display font-semibold text-[15px] mt-2">
-              <span id="submitLabel">Log In</span>
-              <svg id="submitSpinner" class="hidden animate-spin inline-block ml-2" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity=".25"/><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-            </button>
-          </form>
-
-          <div class="flex items-center gap-3 my-6">
-            <div class="h-px flex-1" style="background: var(--line);"></div>
-            <span class="text-xs" style="color: var(--ink-muted);">or continue with</span>
-            <div class="h-px flex-1" style="background: var(--line);"></div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <button type="button" id="googleBtn" class="btn-ghost rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm font-medium">
-              <svg width="17" height="17" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.2-5.5 4.2-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.9 1.5l2.6-2.5C16.9 3.5 14.7 2.5 12 2.5 6.8 2.5 2.6 6.8 2.6 12S6.8 21.5 12 21.5c6.9 0 9.6-4.8 9.6-7.3 0-.5-.05-.9-.13-1.3H12Z"/></svg>
-              Google
-            </button>
-            <button type="button" id="appleBtn" class="btn-ghost rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm font-medium">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M16.7 1c.1 1.1-.3 2.2-1 3-.7.8-1.9 1.5-3 1.4-.1-1.1.4-2.2 1-3 .8-.8 2-1.4 3-1.4Zm3 16.4c-.5 1.2-.8 1.7-1.5 2.7-1 1.5-2.4 3.3-4.1 3.3-1.5 0-1.9-1-4-1s-2.5 1-4 1c-1.7 0-3-1.7-4-3.1C-.1 16.9-.6 11.7 2 8.6c1.3-1.6 3.1-2.5 4.7-2.5 1.6 0 2.6 1 4 1s2.1-1 4-1c1.5 0 3.1.8 4.3 2.2-3.7 2-3.1 7.3.7 9.1Z"/></svg>
-              Apple
-            </button>
-          </div>
-
-          <p class="text-center text-sm mt-7" style="color: var(--ink-muted);">
-            <span id="switchPrompt">Don't have an account?</span>
-            <button type="button" id="switchModeBtn" class="text-link font-semibold ml-1 hover:underline">Sign up</button>
-          </p>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- ============ Footer ============ -->
-  <footer class="relative z-10 border-t" style="border-color: var(--line);">
-    <div class="max-w-7xl mx-auto px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-full grid place-items-center" style="background: var(--ball);">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#10262B" stroke-width="1.6"/><circle cx="12" cy="4.2" r="1.15" fill="#10262B"/><circle cx="12" cy="19.8" r="1.15" fill="#10262B"/><circle cx="4.2" cy="12" r="1.15" fill="#10262B"/><circle cx="19.8" cy="12" r="1.15" fill="#10262B"/></svg>
-        </div>
-        <span class="text-sm" style="color: var(--ink-muted);">&copy; <span id="footerYear"></span> NexStepJS. All rights reserved.</span>
-      </div>
-      <p class="text-sm" style="color: var(--ink-muted);">Developed by <span class="font-semibold" style="color: var(--ink);">NexStepJS</span></p>
     </div>
-  </footer>
+  </section>
 
-  <!-- ============ Privacy Policy Modal ============ -->
-  <div id="policyModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
-    <div class="modal-panel w-full max-w-lg rounded-3xl overflow-hidden flex flex-col max-h-[85vh]" style="background: var(--surface);">
-      <div class="px-6 pt-6 pb-4 border-b" style="border-color: var(--line);">
-        <h3 class="font-display text-xl font-semibold">Privacy Policy</h3>
-        <p class="text-xs mt-1" style="color: var(--ink-muted);">Scroll to the bottom to continue.</p>
+  <!-- MARQUEE -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <div class="marquee-group">
+        <span>Beginners welcome</span><i class="ball-dot"></i>
+        <span>Family friendly</span><i class="ball-dot"></i>
+        <span>Easy to watch from the side</span><i class="ball-dot"></i>
+        <span>Quality, not exclusive</span><i class="ball-dot"></i>
+        <span>Book in a few taps</span><i class="ball-dot"></i>
+        <span>Everyone's invited</span><i class="ball-dot"></i>
       </div>
-      <div id="policyText" class="thin-scroll px-6 py-5 overflow-y-auto text-sm leading-relaxed space-y-4" style="color: var(--ink-muted);">
-        <p><strong style="color: var(--ink);">1. What we collect.</strong> When you create a NexStepJS account we collect your full name, email address, and contact number so we can confirm bookings, send court reminders, and identify you at check-in.</p>
-        <p><strong style="color: var(--ink);">2. How we use your data.</strong> Your information is used to manage court reservations, open-play sign-ups, and league standings. We may send you booking confirmations, schedule changes, and occasional updates about club events. You can opt out of non-essential messages at any time.</p>
-        <p><strong style="color: var(--ink);">3. Payment information.</strong> If you purchase court time or memberships, payment details are processed by our payment partner and are never stored on our servers in full.</p>
-        <p><strong style="color: var(--ink);">4. Sharing.</strong> We do not sell your personal information. Limited details (such as your display name and skill rating) may be visible to other players when you join open play or a league match, so opponents and partners know who they're playing.</p>
-        <p><strong style="color: var(--ink);">5. Security.</strong> Passwords are never stored in plain text. Account access is protected through encrypted authentication, and you can enable session-based sign-in on shared devices instead of staying permanently logged in.</p>
-        <p><strong style="color: var(--ink);">6. Your choices.</strong> You may request a copy of your data, correct inaccurate details, or ask us to delete your account at any time by contacting the front desk or our support email.</p>
-        <p><strong style="color: var(--ink);">7. Cookies and local storage.</strong> We use local storage on your device to remember your theme preference and, if you choose "remember me," to keep you signed in between visits.</p>
-        <p><strong style="color: var(--ink);">8. Changes to this policy.</strong> If this policy changes, we'll update the date below and, for material changes, notify you by email before they take effect.</p>
-        <p class="pt-2" style="color: var(--ink-muted);">Last updated: this season. By creating an account you agree to the handling of your data as described above.</p>
-      </div>
-      <div class="px-6 py-4 border-t flex justify-end gap-3" style="border-color: var(--line);">
-        <button type="button" id="policyCloseBtn" class="btn-ghost rounded-full px-5 py-2 text-sm font-medium">Close</button>
-        <button type="button" id="policyAgreeBtn" class="btn-primary rounded-full px-5 py-2 text-sm font-semibold opacity-0 pointer-events-none -translate-y-1 transition-all duration-300">I agree</button>
+      <div class="marquee-group">
+        <span>Beginners welcome</span><i class="ball-dot"></i>
+        <span>Family friendly</span><i class="ball-dot"></i>
+        <span>Easy to watch from the side</span><i class="ball-dot"></i>
+        <span>Quality, not exclusive</span><i class="ball-dot"></i>
+        <span>Book in a few taps</span><i class="ball-dot"></i>
+        <span>Everyone's invited</span><i class="ball-dot"></i>
       </div>
     </div>
   </div>
 
-  <!-- ============ Forgot Password Modal ============ -->
-  <div id="forgotModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
-    <div class="modal-panel w-full max-w-sm rounded-3xl p-6" style="background: var(--surface);">
-      <h3 class="font-display text-xl font-semibold mb-1">Reset your password</h3>
-      <p class="text-sm mb-5" style="color: var(--ink-muted);">We'll email you a link to get back on the court.</p>
-      <label class="text-xs font-semibold uppercase tracking-wide" style="color: var(--ink-muted);">Email</label>
-      <input type="email" id="forgotEmail" placeholder="you@example.com" class="field-input w-full rounded-xl px-4 py-3 text-[15px] mt-1.5 mb-5" />
-      <div class="flex gap-3">
-        <button type="button" id="forgotCancelBtn" class="btn-ghost flex-1 rounded-xl py-2.5 text-sm font-medium">Cancel</button>
-        <button type="button" id="forgotSendBtn" class="btn-primary flex-1 rounded-xl py-2.5 text-sm font-semibold">Send link</button>
+  <!-- STORY -->
+  <section class="story" id="story" aria-labelledby="story-title">
+    <div class="wrap story-grid">
+      <div class="story-head">
+        <h2 id="story-title" data-split>It started with family.</h2>
+      </div>
+      <div class="story-body" id="story-body">
+        <div class="rail" aria-hidden="true"><span class="rail-ball"></span></div>
+        <p class="reveal">The Court Club began on our family's property in Cebu with a single tennis court, built so our sisters and nieces had somewhere to play. Then Dad suggested pickleball. One court became two, then a few more, and a private family space slowly became something more.</p>
+        <p class="reveal">Our mom uses a wheelchair, so comfort, good viewing areas and easy movement were part of the plan from day one. We never thought of it as "making the place accessible." It was simply our mom. We wanted a spot where family could stay, watch and be together, not just squeeze in more courts.</p>
+        <p class="reveal">When we decided to open to the public, we listened to our sisters and the players they know: what people loved, what they wished were better, and what kept some from playing at all. Too many courts feel intimidating, especially to someone just starting out. We wanted something different, where quality doesn't have to mean exclusive and accessible doesn't have to mean basic.</p>
+        <p class="reveal">We want you to come for the sport and stay because you feel comfortable. It is a business, but for us success is a place people return to simply because they want to be there.</p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ============ Install Help Modal (iOS / unsupported browsers) ============ -->
-  <div id="installHelpModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
-    <div class="modal-panel w-full max-w-sm rounded-3xl p-6 text-center" style="background: var(--surface);">
-      <div class="w-14 h-14 rounded-full mx-auto mb-4 grid place-items-center" style="background: var(--surface-2);">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M9 18h6"/><path d="M12 7v5M12 12l-2.2-2.2M12 12l2.2-2.2" /></svg>
-      </div>
-      <h3 class="font-display text-lg font-semibold mb-1.5">Add to Home Screen</h3>
-      <p id="installHelpText" class="text-sm mb-6" style="color: var(--ink-muted);">Open your browser menu and choose "Install app" or "Add to Home Screen".</p>
-      <button type="button" id="installHelpCloseBtn" class="btn-primary w-full rounded-xl py-2.5 text-sm font-semibold">Got it</button>
+  <section class="band" aria-label="In short">
+    <div class="wrap">
+      <p data-split>The Court Club started as a place for our family. <span class="kicker-line">The family just got a little bigger.</span></p>
     </div>
-  </div>
+  </section>
 
-  <!-- ============ Not Available Modal (Google / Apple) ============ -->
-  <div id="notAvailableModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 modal-backdrop">
-    <div class="modal-panel w-full max-w-sm rounded-3xl p-6 text-center" style="background: var(--surface);">
-      <div class="w-14 h-14 rounded-full mx-auto mb-4 grid place-items-center" style="background: var(--surface-2);">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--court-2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+  <!-- WHAT TO EXPECT -->
+  <section class="welcome" id="welcome" aria-labelledby="welcome-title">
+    <div class="wrap">
+      <h2 id="welcome-title" data-split>Come for the sport. Stay because it feels comfortable.</h2>
+      <div class="pillars">
+        <article class="pillar reveal" style="--d:0ms">
+          <h3>Beginners are welcome</h3>
+          <p>Courts can feel intimidating when you're new. Here, someone picking up a paddle for the first time is as welcome as a player who's on court every week.</p>
+        </article>
+        <article class="pillar reveal" style="--d:140ms">
+          <h3>Easy to move around, easy to watch</h3>
+          <p>Comfortable viewing areas and easy movement were part of the plan from the start, so family and friends can stay close and everyone can get around.</p>
+        </article>
+        <article class="pillar reveal" style="--d:280ms">
+          <h3>Quality without the velvet rope</h3>
+          <p>Well-kept courts we're proud of, open to different ages, backgrounds and walks of life.</p>
+        </article>
       </div>
-      <h3 class="font-display text-lg font-semibold mb-1.5">Coming soon</h3>
-      <p id="notAvailableText" class="text-sm mb-6" style="color: var(--ink-muted);">Sign-in with Google isn't available just yet. Please use your email and password for now.</p>
-      <button type="button" id="notAvailableCloseBtn" class="btn-primary w-full rounded-xl py-2.5 text-sm font-semibold">Got it</button>
     </div>
+  </section>
+
+  <!-- HOW BOOKING WORKS -->
+  <section class="how" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <h2 id="how-title" data-split>Booking takes three steps.</h2>
+      <ol class="steps">
+        <li class="reveal" style="--d:0ms">
+          <h3>Pick a day and time</h3>
+          <p>Tell us when you want to play and how many of you are coming.</p>
+        </li>
+        <li class="reveal" style="--d:220ms">
+          <h3>Choose your court</h3>
+          <p>See which courts are open and pick the one that suits your group.</p>
+        </li>
+        <li class="reveal" style="--d:440ms">
+          <h3>Confirm and come play</h3>
+          <p>Lock in your booking, then bring the family. There's room to watch.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- FINAL CALL -->
+  <section class="final" id="book" aria-labelledby="final-title">
+    <div class="wrap final-inner">
+      <h2 id="final-title" data-split>Your court is waiting.</h2>
+      <p class="reveal">Grab your paddle, your friends and anyone who wants to cheer from the side.</p>
+      <div class="reveal reveal-pop" style="--d:150ms"><a class="btn btn-large btn-pulse" href="book/" data-book data-book-modal aria-haspopup="dialog">Book a court</a></div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="#top" aria-label="The Court Club, back to top">
+          <svg aria-hidden="true"><use href="#mark"/></svg>
+          <span>The Court Club</span>
+        </a>
+        <p class="about">A family-built pickleball club in Cebu, Philippines. Everyone's invited.</p>
+      </div>
+
+      <div>
+        <h3>Visit and contact</h3>
+        <ul id="contact-list">
+          <li>Cebu, Philippines</li>
+        </ul>
+      </div>
+
+      <div>
+        <h3>Take us with you</h3>
+        <button class="btn btn-ghost btn-small" id="install" type="button" hidden>Install the app</button>
+        <p class="ios-hint" id="ios-hint" hidden>On iPhone: tap Share, then Add to Home Screen.</p>
+        <p class="ios-hint" id="install-fallback">Add The Court Club to your home screen for one-tap booking.</p>
+      </div>
+    </div>
+    <p class="legal">&copy; <span id="year">2026</span> The Court Club. All rights reserved. <span class="powered" id="powered">Powered by NexStepJS</span></p>
   </div>
+</footer>
 
-  <!-- ============ Toast container ============ -->
-  <div id="toastContainer" class="fixed bottom-5 right-5 left-5 sm:left-auto z-[60] flex flex-col gap-2.5 items-end"></div>
+<!-- LOGIN / GUEST MODAL (opened by the header and closing "Book a court" buttons) -->
+<dialog class="modal" id="book-modal" aria-labelledby="bm-title" aria-describedby="bm-desc">
+  <div class="modal-panel">
+    <button class="modal-close" type="button" id="bm-close" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
 
-  <script type="module">
-    // ---------------------------------------------------------------
-    // Firebase
-    // ---------------------------------------------------------------
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-    import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-analytics.js";
-    import {
-      getAuth, setPersistence, browserLocalPersistence, browserSessionPersistence,
-      createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile,
-      sendPasswordResetEmail
-    } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+    <div class="modal-ball" aria-hidden="true"><span class="mb-shadow"></span><span class="mb"></span></div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
-      authDomain: "pickleballsystem-729d3.firebaseapp.com",
-      databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "pickleballsystem-729d3",
-      storageBucket: "pickleballsystem-729d3.firebasestorage.app",
-      messagingSenderId: "352709442404",
-      appId: "1:352709442404:web:5bb00d7a77036c55d61871",
-      measurementId: "G-QBWPK4B56G"
-    };
+    <h2 id="bm-title">How would you like to book?</h2>
+    <p class="modal-desc" id="bm-desc">Log in to keep your bookings in one place, or continue as a guest. You can book either way.</p>
 
-    const footerYearEl = document.getElementById('footerYear');
-    if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+    <div class="choices">
+      <a class="choice choice-primary" id="bm-login" href="auth/account.html">
+        <span class="choice-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>
+        </span>
+        <span><strong>Log in</strong><small>Use your account</small></span>
+        <svg class="choice-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
 
-    // ---------------------------------------------------------------
-    // Live "playing right now" counter — always 500+, drifts gently
-    // ---------------------------------------------------------------
-    const onlineCountEl = document.getElementById('onlineCount');
-    function randomBetween(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
-    let onlineCount = randomBetween(500, 1450);
-    function renderOnlineCount() {
-      if (onlineCountEl) onlineCountEl.textContent = onlineCount.toLocaleString();
+      <a class="choice" id="bm-guest" href="book/">
+        <span class="choice-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h12M11 6l6 6-6 6"/><path d="M20 4v16"/></svg>
+        </span>
+        <span><strong>Continue as guest</strong><small>No account needed</small></span>
+        <svg class="choice-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+
+    <p class="modal-foot">New here? <a id="bm-signup" href="auth/account.html">Create an account</a></p>
+  </div>
+</dialog>
+
+<script>
+/* ------------------------------------------------------------------
+   Site settings: fill these in. Empty values are simply not shown.
+------------------------------------------------------------------ */
+const CONFIG = {
+  bookingUrl: 'book/',              // where the booking flow lives
+  accountUrl: 'auth/account.html',  // log in / sign up page (receives ?mode=login|signup&next=<bookingUrl>)
+  poweredBy: 'NexStepJS',           // shown in the footer
+  poweredByUrl: '',                 // optional link for the credit (https only)
+  phone: '',                // e.g. '+63 900 000 0000'
+  email: '',                // e.g. 'hello@thecourtclub.ph'
+  instagram: '',            // full URL
+  facebook: '',             // full URL
+  address: ''               // street address, shown above "Cebu, Philippines"
+};
+
+/* ------------------------------------------------------------------
+   Login check for the "Book a court" buttons.
+   This only decides whether to show the modal. It is NOT security:
+   anyone can edit it in their browser. Your server must check the real
+   session (an HttpOnly, Secure, SameSite cookie) on auth/ and book/.
+   Never store passwords or session tokens in localStorage. After a
+   successful login, auth/account.html can set the harmless hint
+   localStorage.setItem('tcc-signed-in', '1') so this page skips the modal.
+------------------------------------------------------------------ */
+function isLoggedIn() {
+  try { return localStorage.getItem('tcc-signed-in') === '1'; } catch (e) { return false; }
+}
+
+/* Only ever pass along links that stay on this site (blocks open redirects) */
+function sameSiteUrl(url, fallback) {
+  try {
+    const u = new URL(url, location.href);
+    if (u.origin !== location.origin) throw 0;
+    return u;
+  } catch (e) {
+    return new URL(fallback, location.href);
+  }
+}
+function localPath(u) { return u.pathname + u.search; }
+
+/* Only allow web links (no javascript: or data: URLs) */
+function safeHttpUrl(url) {
+  try { const u = new URL(url); return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : ''; } catch (e) { return ''; }
+}
+
+const root = document.documentElement;
+const noMotion = root.classList.contains('no-motion');
+
+/* Booking links and form (header, hero form, closing button) */
+document.querySelectorAll('[data-book]').forEach(a => a.setAttribute('href', CONFIG.bookingUrl));
+document.querySelector('[data-book-form]').setAttribute('action', CONFIG.bookingUrl);
+
+/* Date defaults: today, no past dates */
+(function () {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  const iso = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  const input = document.getElementById('f-date');
+  input.min = iso; input.value = iso;
+})();
+
+/* Contact list (built with text nodes, so settings can never inject markup) */
+(function () {
+  const list = document.getElementById('contact-list');
+  list.textContent = '';
+  const add = (text, href, external) => {
+    const li = document.createElement('li');
+    if (href) {
+      const a = document.createElement('a');
+      a.href = href; a.textContent = text;
+      if (external) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      li.appendChild(a);
+    } else { li.textContent = text; }
+    list.appendChild(li);
+  };
+  if (CONFIG.address) add(CONFIG.address);
+  add('Cebu, Philippines');
+  if (CONFIG.phone) add(CONFIG.phone, 'tel:' + CONFIG.phone.replace(/[^+\d]/g, ''));
+  if (CONFIG.email && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(CONFIG.email)) add(CONFIG.email, 'mailto:' + CONFIG.email);
+  const ig = safeHttpUrl(CONFIG.instagram); if (ig) add('Instagram', ig, true);
+  const fb = safeHttpUrl(CONFIG.facebook); if (fb) add('Facebook', fb, true);
+})();
+
+/* Powered-by credit */
+(function () {
+  const el = document.getElementById('powered');
+  el.textContent = '';
+  const name = CONFIG.poweredBy || 'NexStepJS';
+  const url = safeHttpUrl(CONFIG.poweredByUrl);
+  el.appendChild(document.createTextNode('Powered by '));
+  if (url) {
+    const a = document.createElement('a');
+    a.href = url; a.textContent = name; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    el.appendChild(a);
+  } else { el.appendChild(document.createTextNode(name)); }
+})();
+
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ------------------------------------------------------------------
+   Login / guest modal (header and closing buttons)
+------------------------------------------------------------------ */
+(function () {
+  const triggers = document.querySelectorAll('[data-book-modal]');
+  const dlg = document.getElementById('book-modal');
+  const panel = dlg.querySelector('.modal-panel');
+  const loginA = document.getElementById('bm-login');
+  const guestA = document.getElementById('bm-guest');
+  const signupA = document.getElementById('bm-signup');
+  let closing = false;
+
+  /* Build links that always stay on this site */
+  const booking = sameSiteUrl(CONFIG.bookingUrl, 'book/');
+  const account = mode => {
+    const u = sameSiteUrl(CONFIG.accountUrl, 'auth/account.html');
+    u.searchParams.set('mode', mode);
+    u.searchParams.set('next', localPath(booking));
+    return localPath(u);
+  };
+  loginA.href = account('login');
+  signupA.href = account('signup');
+  const guest = new URL(booking.href); guest.searchParams.set('guest', '1');
+  guestA.href = localPath(guest);
+
+  const guestChosen = () => { try { return sessionStorage.getItem('tcc-guest') === '1'; } catch (e) { return false; } };
+
+  function openModal() {
+    if (typeof dlg.showModal !== 'function') { location.href = loginA.getAttribute('href'); return; }
+    closing = false;
+    dlg.classList.remove('closing');
+    dlg.showModal();
+    loginA.focus({ preventScroll: true });
+  }
+  function closeModal() {
+    if (!dlg.open || closing) return;
+    if (noMotion) { dlg.close(); return; }
+    closing = true;
+    dlg.classList.add('closing');
+    let done = false;
+    const finish = () => { if (done) return; done = true; dlg.classList.remove('closing'); closing = false; dlg.close(); };
+    panel.addEventListener('animationend', function h(e) { if (e.target === panel && e.animationName === 'pop-out') { panel.removeEventListener('animationend', h); finish(); } });
+    setTimeout(finish, 450);
+  }
+
+  triggers.forEach(btn => btn.addEventListener('click', e => {
+    if (isLoggedIn() || guestChosen()) return;   // go straight to booking
+    e.preventDefault();
+    openModal();
+  }));
+  guestA.addEventListener('click', () => { try { sessionStorage.setItem('tcc-guest', '1'); } catch (e) {} });
+
+  document.getElementById('bm-close').addEventListener('click', closeModal);
+  dlg.addEventListener('click', e => { if (e.target === dlg) closeModal(); });   // click outside
+  dlg.addEventListener('cancel', e => { e.preventDefault(); closeModal(); });     // Esc key
+})();
+
+/* ------------------------------------------------------------------
+   Theme toggle (light / dark) with a circular reveal
+------------------------------------------------------------------ */
+(function () {
+  const btn = document.getElementById('theme-toggle');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const colors = { light: '#F5F7F2', dark: '#0A171D' };
+
+  function apply(theme, save) {
+    root.dataset.theme = theme;
+    if (meta) meta.setAttribute('content', colors[theme]);
+    btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    if (save) { try { localStorage.setItem('tcc-theme', theme); } catch (e) {} }
+  }
+  apply(root.dataset.theme || 'light', false);
+
+  btn.addEventListener('click', () => {
+    const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    if (!noMotion) {
+      btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
     }
-    function driftOnlineCount() {
-      const delta = randomBetween(-18, 24);
-      onlineCount = Math.max(500, onlineCount + delta);
-      renderOnlineCount();
-    }
-    renderOnlineCount();
-    setInterval(driftOnlineCount, 3500);
+    if (noMotion || !document.startViewTransition) { apply(next, true); return; }
 
-    const app = initializeApp(firebaseConfig);
-    analyticsSupported().then((ok) => { if (ok) getAnalytics(app); }).catch(() => {});
-    const auth = getAuth(app);
-    const db = getDatabase(app);
+    const r = btn.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    const end = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    const t = document.startViewTransition(() => apply(next, true));
+    t.ready.then(() => {
+      root.animate(
+        { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + end + 'px at ' + x + 'px ' + y + 'px)'] },
+        { duration: 700, easing: 'cubic-bezier(.65, 0, .25, 1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    }).catch(() => {});
+  });
 
-    // ---------------------------------------------------------------
-    // Theme (dark / light)
-    // ---------------------------------------------------------------
-    const root = document.documentElement;
-    const themeToggle = document.getElementById('themeToggle');
-    const iconSun = document.getElementById('iconSun');
-    const iconMoon = document.getElementById('iconMoon');
+  /* Follow the device setting until the visitor chooses */
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener && mq.addEventListener('change', e => {
+    let saved = null;
+    try { saved = localStorage.getItem('tcc-theme'); } catch (err) {}
+    if (!saved) apply(e.matches ? 'dark' : 'light', false);
+  });
+})();
 
-    function applyTheme(theme) {
-      root.classList.toggle('dark', theme === 'dark');
-      iconSun.classList.toggle('hidden', theme === 'dark');
-      iconMoon.classList.toggle('hidden', theme !== 'dark');
-      localStorage.setItem('kl-theme', theme);
-    }
-    const savedTheme = localStorage.getItem('kl-theme');
-    applyTheme(savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-    themeToggle.addEventListener('click', () => {
-      applyTheme(root.classList.contains('dark') ? 'light' : 'dark');
+/* ------------------------------------------------------------------
+   Animation: headline word splits, scroll reveals, scroll-linked bits
+------------------------------------------------------------------ */
+(function () {
+  if (noMotion) return;
+
+  /* Split text into words that rise one by one */
+  function splitNode(node, counter) {
+    Array.from(node.childNodes).forEach(child => {
+      if (child.nodeType === 3) {
+        const parts = child.textContent.split(/(\s+)/);
+        const frag = document.createDocumentFragment();
+        parts.forEach(part => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(' ')); return; }
+          const outer = document.createElement('span'); outer.className = 'w';
+          const inner = document.createElement('span');
+          inner.textContent = part; inner.style.setProperty('--i', Math.min(counter.n++, 14));
+          outer.appendChild(inner); frag.appendChild(outer);
+        });
+        node.replaceChild(frag, child);
+      } else if (child.nodeType === 1) {
+        splitNode(child, counter);
+      }
     });
+  }
+  document.querySelectorAll('[data-split]').forEach(el => {
+    splitNode(el, { n: 0 });
+    el.classList.add('split');
+  });
 
-    // ---------------------------------------------------------------
-    // PWA: service worker + install prompt
-    // ---------------------------------------------------------------
-    if ('serviceWorker' in navigator) {
-      let swRefreshing = false;
+  /* Reveal on scroll */
+  const targets = document.querySelectorAll('.reveal, .split, .band, .pillar, .steps li');
+  const show = el => el.classList.add('in');
+  if (!('IntersectionObserver' in window)) { targets.forEach(show); }
+  else {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(en => { if (en.isIntersecting) { show(en.target); io.unobserve(en.target); } });
+    }, { threshold: 0.18, rootMargin: '0px 0px -6% 0px' });
+    targets.forEach(el => io.observe(el));
+  }
+  /* Hero headline plays straight away */
+  const h1 = document.getElementById('hero-title');
+  requestAnimationFrame(() => setTimeout(() => show(h1), 200));
 
-      // As soon as a new service worker takes control, reload once so the
-      // fresh app shell is actually used (guarded to avoid reload loops).
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (swRefreshing) return;
-        swRefreshing = true;
-        window.location.reload();
+  /* Pointer tilt on the court (mouse devices) */
+  const hero = document.getElementById('hero');
+  const court = document.getElementById('court-wrap');
+  if (window.matchMedia('(hover: hover)').matches) {
+    let raf = 0;
+    hero.addEventListener('pointermove', e => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const r = hero.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - .5;
+        const y = (e.clientY - r.top) / r.height - .5;
+        court.style.setProperty('--ry', (x * 9).toFixed(2) + 'deg');
+        court.style.setProperty('--rx', (-y * 7).toFixed(2) + 'deg');
       });
-
-      window.addEventListener('load', async () => {
-        try {
-          const registration = await navigator.serviceWorker.register('sw.js');
-
-          // Check for a new version now, then again whenever we regain
-          // connectivity or the tab becomes visible — "auto-update as long
-          // as there's internet" without requiring a manual refresh.
-          const checkForUpdate = () => registration.update().catch(() => {});
-          checkForUpdate();
-          window.addEventListener('online', checkForUpdate);
-          document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') checkForUpdate();
-          });
-          setInterval(() => { if (navigator.onLine) checkForUpdate(); }, 60 * 1000);
-        } catch (err) {
-          console.error('Service worker registration failed:', err);
-        }
-      });
-    }
-    function isIos() {
-      return /iphone|ipad|ipod/i.test(window.navigator.userAgent) && !window.MSStream;
-    }
-    function isStandalone() {
-      return window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-    }
-
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-    const installHelpModal = document.getElementById('installHelpModal');
-    const installHelpText = document.getElementById('installHelpText');
-
-    function showInstallHelp(text) {
-      installHelpText.textContent = text;
-      openModal(installHelpModal);
-    }
-
-    // Chrome / Edge / Android fire this when the site meets install criteria.
-    // Browsers that don't fire it (iOS Safari, Firefox, desktop Safari) still
-    // get the button, with instructions instead of a native prompt.
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      installBtn.textContent = 'Install app';
-      installBtn.classList.remove('hidden');
     });
-
-    window.addEventListener('appinstalled', () => {
-      deferredPrompt = null;
-      installBtn.classList.add('hidden');
-      showToast('success', 'NexStepJS installed!');
+    hero.addEventListener('pointerleave', () => {
+      court.style.setProperty('--ry', '0deg'); court.style.setProperty('--rx', '0deg');
     });
+  }
+})();
 
-    installBtn.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installBtn.classList.add('hidden');
-        return;
-      }
-      if (isIos()) {
-        showInstallHelp('Tap the Share icon in Safari (the square with an arrow), then choose "Add to Home Screen".');
-      } else {
-        showInstallHelp('Open your browser\'s menu and look for "Install app" or "Add to Home Screen" — usually near the address bar or in the ⋮ / ⋯ menu.');
-      }
-    });
-    document.getElementById('installHelpCloseBtn').addEventListener('click', () => closeModal(installHelpModal));
-    installHelpModal.addEventListener('click', (e) => { if (e.target === installHelpModal) closeModal(installHelpModal); });
+/* Scroll-linked: progress bar, header shadow, rolling ball in the story */
+(function () {
+  const header = document.getElementById('site-header');
+  const bar = document.getElementById('progress');
+  const story = document.getElementById('story-body');
+  let ticking = false;
 
-    if (!isStandalone()) {
-      installBtn.textContent = isIos() ? 'Add to Home Screen' : 'Install app';
-      installBtn.classList.remove('hidden');
+  function update() {
+    ticking = false;
+    const y = window.scrollY;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.setProperty('--p', max > 0 ? Math.min(y / max, 1).toFixed(4) : 0);
+    header.classList.toggle('scrolled', y > 8);
+
+    if (!noMotion) {
+      const r = story.getBoundingClientRect();
+      const p = (window.innerHeight * 0.6 - r.top) / r.height;
+      story.style.setProperty('--rp', Math.max(0, Math.min(1, p)).toFixed(4));
     }
+  }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  update();
+})();
 
-    // ---------------------------------------------------------------
-    // Toasts
-    // ---------------------------------------------------------------
-    function showToast(type, message) {
-      const colors = {
-        success: { bg: 'var(--success)', fg: '#fff' },
-        error: { bg: 'var(--danger)', fg: '#fff' },
-        info: { bg: 'var(--court)', fg: '#F7F5EE' },
-      };
-      const c = colors[type] || colors.info;
-      const el = document.createElement('div');
-      el.className = 'toast rounded-2xl px-4 py-3 text-sm font-medium shadow-xl max-w-xs sm:max-w-[70vw] sm:w-max sm:whitespace-nowrap';
-      el.style.background = c.bg;
-      el.style.color = c.fg;
-      el.textContent = message;
-      document.getElementById('toastContainer').appendChild(el);
-      setTimeout(() => {
-        el.style.transition = 'opacity .3s ease, transform .3s ease';
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(8px)';
-        setTimeout(() => el.remove(), 300);
-      }, 4200);
-    }
+/* ------------------------------------------------------------------
+   PWA: service worker + install prompt
+------------------------------------------------------------------ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 
-    // ---------------------------------------------------------------
-    // Mode switching (Login <-> Sign up)
-    // ---------------------------------------------------------------
-    let mode = 'login';
-    let policyAgreed = false;
+(function () {
+  const installBtn = document.getElementById('install');
+  const fallback = document.getElementById('install-fallback');
+  const iosHint = document.getElementById('ios-hint');
+  let deferred = null;
 
-    const cardContent = document.getElementById('cardContent');
-    const formTitle = document.getElementById('formTitle');
-    const formSubtitle = document.getElementById('formSubtitle');
-    const submitLabel = document.getElementById('submitLabel');
-    const switchPrompt = document.getElementById('switchPrompt');
-    const switchModeBtn = document.getElementById('switchModeBtn');
-    const tabLogin = document.getElementById('tabLogin');
-    const tabSignup = document.getElementById('tabSignup');
-    const tabPill = document.getElementById('tabPill');
-    const submitBtn = document.getElementById('submitBtn');
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) { fallback.hidden = true; return; }
 
-    const rowFullName = document.getElementById('rowFullName');
-    const rowContact = document.getElementById('rowContact');
-    const rowPasswordSecurity = document.getElementById('rowPasswordSecurity');
-    const rowPolicy = document.getElementById('rowPolicy');
-    const rowRemember = document.getElementById('rowRemember');
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferred = e;
+    installBtn.hidden = false;
+    fallback.hidden = true;
+  });
+  installBtn.addEventListener('click', async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice;
+    deferred = null;
+    installBtn.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { installBtn.hidden = true; fallback.hidden = true; });
 
-    function paintTabs() {
-      const active = { background: 'var(--court)' };
-      tabPill.style.transform = mode === 'login' ? 'translateX(0%)' : 'translateX(100%)';
-      tabLogin.style.color = mode === 'login' ? (root.classList.contains('dark') ? 'var(--ball-ink)' : '#F7F5EE') : 'var(--ink)';
-      tabSignup.style.color = mode === 'signup' ? (root.classList.contains('dark') ? 'var(--ball-ink)' : '#F7F5EE') : 'var(--ink)';
-      tabPill.style.background = root.classList.contains('dark') ? 'var(--ball)' : 'var(--court)';
-    }
-
-    function updateSubmitState() {
-      submitBtn.disabled = mode === 'signup' && !policyAgreed;
-    }
-
-    function setMode(next, animate = true) {
-      if (next === mode) return;
-      const swap = () => {
-        mode = next;
-        const isSignup = mode === 'signup';
-        rowFullName.classList.toggle('open', isSignup);
-        rowContact.classList.toggle('open', isSignup);
-        rowPasswordSecurity.classList.toggle('open', isSignup);
-        rowPolicy.classList.toggle('open', isSignup);
-        rowRemember.classList.toggle('open', !isSignup);
-
-        formTitle.textContent = isSignup ? 'Create your account' : 'Welcome back';
-        formSubtitle.textContent = isSignup ? 'Join the club and start booking courts.' : 'Log in to book your next court.';
-        submitLabel.textContent = isSignup ? 'Create Account' : 'Log In';
-        switchPrompt.textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
-        switchModeBtn.textContent = isSignup ? 'Log in' : 'Sign up';
-
-        document.getElementById('password').autocomplete = isSignup ? 'new-password' : 'current-password';
-        clearAllErrors();
-        paintTabs();
-        updateSubmitState();
-      };
-
-      if (!animate) { swap(); return; }
-      cardContent.classList.add('mode-leaving');
-      setTimeout(() => {
-        swap();
-        cardContent.classList.remove('mode-leaving');
-      }, 180);
-    }
-
-    tabLogin.addEventListener('click', () => setMode('login'));
-    tabSignup.addEventListener('click', () => setMode('signup'));
-    switchModeBtn.addEventListener('click', () => setMode(mode === 'login' ? 'signup' : 'login'));
-    paintTabs();
-
-    // ---------------------------------------------------------------
-    // Show / hide password
-    // ---------------------------------------------------------------
-    document.querySelectorAll('.toggle-eye').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const input = document.getElementById(btn.dataset.target);
-        const show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        btn.querySelector('.eye-open').classList.toggle('hidden', show);
-        btn.querySelector('.eye-closed').classList.toggle('hidden', !show);
-        btn.setAttribute('aria-pressed', String(show));
-      });
-    });
-
-    // ---------------------------------------------------------------
-    // Password strength meter
-    // ---------------------------------------------------------------
-    const pwInput = document.getElementById('password');
-    const confirmInput = document.getElementById('confirmPassword');
-    const strengthFill = document.getElementById('strengthFill');
-    const strengthLabel = document.getElementById('strengthLabel');
-    const matchMsg = document.getElementById('matchMsg');
-
-    function evaluatePassword(pw) {
-      const rules = {
-        len: pw.length >= 6 && pw.length <= 25,
-        upper: /[A-Z]/.test(pw),
-        lower: /[a-z]/.test(pw),
-        num: /[0-9]/.test(pw),
-        sym: /[^A-Za-z0-9]/.test(pw),
-      };
-      const score = Object.values(rules).filter(Boolean).length;
-      document.querySelectorAll('.req-item').forEach((li) => {
-        const ok = rules[li.dataset.rule];
-        li.style.color = ok ? 'var(--success)' : 'var(--ink-muted)';
-        const dot = li.querySelector('.req-dot');
-        dot.style.display = 'inline-block';
-        dot.style.width = '6px'; dot.style.height = '6px'; dot.style.borderRadius = '999px';
-        dot.style.background = ok ? 'var(--success)' : 'var(--line)';
-        dot.style.transition = 'background-color .25s ease';
-      });
-      const pct = pw.length === 0 ? 0 : Math.max(12, (score / 5) * 100);
-      strengthFill.style.width = pct + '%';
-      const labels = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong', 'Strong'];
-      const colors = ['var(--danger)', 'var(--danger)', '#E8A93B', '#E8A93B', 'var(--success)', 'var(--success)'];
-      strengthFill.style.background = pw.length === 0 ? 'var(--line)' : colors[score];
-      strengthLabel.textContent = pw.length === 0 ? 'Password strength' : labels[score];
-      return score;
-    }
-
-    function checkMatch() {
-      if (!confirmInput.value) { matchMsg.classList.add('hidden'); return true; }
-      const ok = pwInput.value === confirmInput.value;
-      matchMsg.textContent = ok ? 'Passwords match' : "Passwords don't match";
-      matchMsg.style.color = ok ? 'var(--success)' : 'var(--danger)';
-      matchMsg.classList.remove('hidden');
-      return ok;
-    }
-
-    pwInput.addEventListener('input', () => { evaluatePassword(pwInput.value); checkMatch(); });
-    confirmInput.addEventListener('input', checkMatch);
-    evaluatePassword('');
-
-    // ---------------------------------------------------------------
-    // Remember me toggle switch visuals
-    // ---------------------------------------------------------------
-    const rememberMe = document.getElementById('rememberMe');
-    const rememberTrack = document.getElementById('rememberTrack');
-    const rememberDot = document.getElementById('rememberDot');
-    rememberMe.addEventListener('change', () => {
-      rememberTrack.style.background = rememberMe.checked ? (root.classList.contains('dark') ? 'var(--ball)' : 'var(--court)') : 'var(--line)';
-      rememberDot.style.transform = rememberMe.checked ? 'translateX(16px)' : 'translateX(0)';
-    });
-
-    // ---------------------------------------------------------------
-    // Privacy policy modal
-    // ---------------------------------------------------------------
-    const policyModal = document.getElementById('policyModal');
-    const policyText = document.getElementById('policyText');
-    const policyAgreeBtn = document.getElementById('policyAgreeBtn');
-    const policyBox = document.getElementById('policyBox');
-    const policyRow = document.getElementById('policyRow');
-
-    function openModal(el) { el.classList.remove('hidden'); el.classList.add('flex'); document.body.style.overflow = 'hidden'; }
-    function closeModal(el) { el.classList.add('hidden'); el.classList.remove('flex'); document.body.style.overflow = ''; }
-
-    policyRow.addEventListener('click', () => {
-      openModal(policyModal);
-      policyAgreeBtn.classList.add('opacity-0', 'pointer-events-none', '-translate-y-1');
-      // re-check in case content already fits without scrolling
-      requestAnimationFrame(() => maybeRevealAgree());
-    });
-    document.getElementById('policyCloseBtn').addEventListener('click', () => closeModal(policyModal));
-
-    function maybeRevealAgree() {
-      const atBottom = policyText.scrollTop + policyText.clientHeight >= policyText.scrollHeight - 12;
-      if (atBottom) {
-        policyAgreeBtn.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-1');
-      }
-    }
-    policyText.addEventListener('scroll', maybeRevealAgree);
-
-    policyAgreeBtn.addEventListener('click', () => {
-      policyAgreed = true;
-      policyBox.classList.add('agreed');
-      updateSubmitState();
-      closeModal(policyModal);
-      showToast('success', 'Thanks — you\'re all set to create your account.');
-    });
-
-    // ---------------------------------------------------------------
-    // Forgot password modal
-    // ---------------------------------------------------------------
-    const forgotModal = document.getElementById('forgotModal');
-    document.getElementById('forgotBtn').addEventListener('click', () => {
-      document.getElementById('forgotEmail').value = document.getElementById('email').value || '';
-      openModal(forgotModal);
-    });
-    document.getElementById('forgotCancelBtn').addEventListener('click', () => closeModal(forgotModal));
-    document.getElementById('forgotSendBtn').addEventListener('click', async () => {
-      const email = document.getElementById('forgotEmail').value.trim();
-      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-        showToast('error', 'Enter a valid email first.');
-        return;
-      }
-      const btn = document.getElementById('forgotSendBtn');
-      btn.disabled = true;
-      try {
-        await sendPasswordResetEmail(auth, email);
-        showToast('success', 'Reset link sent — check your inbox.');
-        closeModal(forgotModal);
-      } catch (err) {
-        console.error('Password reset failed:', err);
-        showToast('error', mapFirebaseError(err.code, err.message));
-      } finally {
-        btn.disabled = false;
-      }
-    });
-
-    // ---------------------------------------------------------------
-    // Google / Apple "not available" modal
-    // ---------------------------------------------------------------
-    const notAvailableModal = document.getElementById('notAvailableModal');
-    const notAvailableText = document.getElementById('notAvailableText');
-    document.getElementById('googleBtn').addEventListener('click', () => {
-      notAvailableText.textContent = "Sign-in with Google isn't available just yet. Please use your email and password for now.";
-      openModal(notAvailableModal);
-    });
-    document.getElementById('appleBtn').addEventListener('click', () => {
-      notAvailableText.textContent = "Sign-in with Apple isn't available just yet. Please use your email and password for now.";
-      openModal(notAvailableModal);
-    });
-    document.getElementById('notAvailableCloseBtn').addEventListener('click', () => closeModal(notAvailableModal));
-
-    // close modals on backdrop click
-    [policyModal, forgotModal, notAvailableModal].forEach((m) => {
-      m.addEventListener('click', (e) => { if (e.target === m) closeModal(m); });
-    });
-
-    // ---------------------------------------------------------------
-    // Form validation helpers
-    // ---------------------------------------------------------------
-    function setError(inputEl, show) {
-      const wrap = inputEl.closest('.space-y-1.5, .accordion-inner');
-      const msg = wrap ? wrap.querySelector('.err-msg') : null;
-      inputEl.classList.toggle('field-error', show);
-      if (msg) msg.classList.toggle('hidden', !show);
-    }
-    function clearAllErrors() {
-      document.querySelectorAll('.field-input').forEach((i) => i.classList.remove('field-error'));
-      document.querySelectorAll('.err-msg').forEach((m) => m.classList.add('hidden'));
-    }
-
-    function mapFirebaseError(code, fallbackMessage) {
-      const map = {
-        'auth/invalid-email': 'That email address looks invalid.',
-        'auth/user-not-found': 'No account found with that email.',
-        'auth/wrong-password': 'Incorrect password. Try again.',
-        'auth/invalid-credential': 'Incorrect email or password.',
-        'auth/email-already-in-use': 'An account already exists with that email.',
-        'auth/weak-password': 'Please choose a stronger password.',
-        'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
-        'auth/network-request-failed': 'Network error — check your connection.',
-        'auth/operation-not-allowed': "Email/password sign-in isn't enabled in Firebase yet.",
-        'auth/unauthorized-domain': "This domain isn't authorized in Firebase yet.",
-        'auth/user-disabled': 'This account has been disabled.',
-      };
-      if (map[code]) return map[code];
-      // The Realtime Database SDK throws "PERMISSION_DENIED" (uppercase,
-      // underscore) rather than Firestore's "permission-denied" — normalize
-      // so this actually catches it, and point straight at the fix.
-      const normalized = String(code || '').toUpperCase();
-      if (normalized === 'PERMISSION_DENIED' || /PERMISSION_DENIED/.test(String(fallbackMessage || ''))) {
-        return "Your Realtime Database rules are blocking this write — update the rules for customer_data to allow signed-in users to write their own record.";
-      }
-      return fallbackMessage || 'Something went wrong. Please try again.';
-    }
-
-    // ---------------------------------------------------------------
-    // Submit handler
-    // ---------------------------------------------------------------
-    const authForm = document.getElementById('authForm');
-    const submitSpinner = document.getElementById('submitSpinner');
-
-    function setLoading(loading) {
-      submitBtn.disabled = loading || (mode === 'signup' && !policyAgreed);
-      submitSpinner.classList.toggle('hidden', !loading);
-      submitLabel.style.opacity = loading ? '.6' : '1';
-    }
-
-    authForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearAllErrors();
-
-      const emailEl = document.getElementById('email');
-      const pwEl = document.getElementById('password');
-      const email = emailEl.value.trim();
-      const password = pwEl.value;
-
-      let valid = true;
-      if (!/^\S+@\S+\.\S+$/.test(email)) { setError(emailEl, true); valid = false; }
-      if (!password) { setError(pwEl, true); valid = false; }
-      if (password && (password.length < 6 || password.length > 25)) { setError(pwEl, true); valid = false; }
-
-      if (mode === 'signup') {
-        const fullNameEl = document.getElementById('fullName');
-        const phoneEl = document.getElementById('phoneNumber');
-        const confirmEl = document.getElementById('confirmPassword');
-        const countryCode = document.getElementById('countryCode').value;
-
-        if (fullNameEl.value.trim().length < 2) { setError(fullNameEl, true); valid = false; }
-        if (!/^[0-9]{7,12}$/.test(phoneEl.value.trim())) { setError(phoneEl, true); valid = false; }
-        if (!checkMatch() || !confirmEl.value) { setError(confirmEl, true); valid = false; }
-        if (!policyAgreed) {
-          policyRow.classList.add('shake-el');
-          setTimeout(() => policyRow.classList.remove('shake-el'), 500);
-          valid = false;
-        }
-
-        if (!valid) return;
-
-        setLoading(true);
-        try {
-          // Step 1: create the auth account. If this fails, nothing else runs.
-          const cred = await createUserWithEmailAndPassword(auth, email, password);
-          const profileData = {
-            fullName: fullNameEl.value.trim(),
-            email,
-            phone: countryCode + phoneEl.value.trim(),
-            role: 'customer',
-            createdAt: Date.now(),
-          };
-
-          // Step 2: save the profile. Kept in its own try/catch so a database
-          // rules issue doesn't make a successful signup look like a failure.
-          try {
-            await updateProfile(cred.user, { displayName: profileData.fullName });
-            await set(ref(db, 'customer_data/' + cred.user.uid), profileData);
-          } catch (profileErr) {
-            // The write can occasionally report an error (e.g. a dropped
-            // connection right after sending) even though it actually landed.
-            // Read it back before telling the user it failed.
-            console.error('Profile save error, verifying with a read-back:', profileErr);
-            let actuallySaved = false;
-            try {
-              const snap = await get(ref(db, 'customer_data/' + cred.user.uid));
-              actuallySaved = snap.exists();
-            } catch (readErr) {
-              console.error('Read-back check failed:', readErr);
-            }
-            if (!actuallySaved) {
-              showToast('info', mapFirebaseError(profileErr.code, profileErr.message));
-            }
-          }
-
-          showToast('success', 'Account created — redirecting…');
-          setTimeout(() => { window.location.href = 'pages/user/dashboard.html'; }, 900);
-        } catch (err) {
-          console.error('Signup failed:', err);
-          showToast('error', mapFirebaseError(err.code, err.message));
-          setLoading(false);
-        }
-
-      } else {
-        if (!valid) return;
-        setLoading(true);
-        try {
-          await setPersistence(auth, rememberMe.checked ? browserLocalPersistence : browserSessionPersistence);
-          const cred = await signInWithEmailAndPassword(auth, email, password);
-
-          // Route by role: read this user's own record under
-          // customer_data/{uid} and branch on its `role` field — 'admin'
-          // goes to the admin dashboard, everything else goes to the
-          // customer dashboard.
-          let destination = 'pages/user/dashboard.html';
-          try {
-            const roleSnap = await get(ref(db, 'customer_data/' + cred.user.uid + '/role'));
-            if (roleSnap.exists() && roleSnap.val() === 'admin') destination = 'pages/admin/dashboard.html';
-          } catch (roleErr) {
-            console.error('Role lookup failed, defaulting to user dashboard:', roleErr);
-          }
-
-          showToast('success', 'Welcome back — redirecting…');
-          setTimeout(() => { window.location.href = destination; }, 900);
-        } catch (err) {
-          console.error('Login failed:', err);
-          showToast('error', mapFirebaseError(err.code, err.message));
-          setLoading(false);
-        }
-      }
-    });
-
-    updateSubmitState();
-  </script>
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS) { iosHint.hidden = false; fallback.hidden = true; }
+})();
+</script>
 </body>
 </html>
