@@ -225,6 +225,7 @@ html.nav-open .scrim { opacity: 1; visibility: visible; transition: opacity .3s 
 .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 18px; }
 .panel-head h2 { font-size: 1.5rem; font-weight: 700; font-stretch: 90%; }
 .panel-head .sub { color: var(--ink-soft); font-size: .9rem; }
+.empty-note { color: var(--ink-soft); font-size: .92rem; padding: 6px 2px; }
 
 /* ---------- Court board ---------- */
 .courts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
@@ -288,7 +289,7 @@ tr:last-child td { border-bottom: 0; }
   td::before { content: attr(data-label); display: inline-block; width: 90px; color: var(--ink-soft); font-size: .8rem; }
 }
 
-/* ---------- Logout confirmation ---------- */
+/* ---------- Dialogs (logout confirm + new booking) ---------- */
 .btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn-primary.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
 .btn-primary.ghost::after { display: none; }
@@ -307,6 +308,16 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
 .confirm-err { margin: -.6rem 0 1rem; color: var(--down); font-weight: 500; font-size: .95rem; }
 .confirm-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .confirm-actions .btn-primary { width: 100%; height: 3rem; }
+
+/* New-booking form fields, reusing the same dialog shell */
+.field { display: grid; gap: .4rem; margin-bottom: 1rem; }
+.field label { font-size: .85rem; font-weight: 600; color: var(--ink-soft); }
+.field input, .field select {
+  height: 2.7rem; border-radius: 12px; border: 1.5px solid var(--line);
+  background: var(--bg); color: var(--ink); padding: 0 .85rem;
+  font: 500 .97rem/1 var(--font-sans);
+}
+.field input:focus-visible, .field select:focus-visible { border-color: var(--focus); }
 
 @media (prefers-reduced-motion: no-preference) {
   dialog.confirm[open]::backdrop { animation: fade-in .3s ease both; }
@@ -379,7 +390,7 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
         <h1 id="greeting">Good afternoon</h1>
         <p id="today"></p>
       </div>
-      <button class="btn-primary" type="button">New booking</button>
+      <button class="btn-primary" type="button" id="new-booking-btn">New booking</button>
     </div>
 
     <section class="stats" id="stats" aria-label="Overview"></section>
@@ -387,7 +398,7 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
     <section class="panel">
       <div class="panel-head">
         <h2>Courts right now</h2>
-        <span class="sub">Updated live</span>
+        <span class="sub" id="courts-sub">Updated live</span>
       </div>
       <div class="courts-grid" id="courts"></div>
     </section>
@@ -395,7 +406,7 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
     <section class="panel">
       <div class="panel-head">
         <h2>Today's bookings</h2>
-        <span class="sub">7 total</span>
+        <span class="sub" id="bookings-sub">Updated live</span>
       </div>
       <table>
         <thead>
@@ -411,7 +422,7 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
 <dialog class="confirm" id="logout-dialog" aria-labelledby="lo-title" aria-describedby="lo-desc">
   <div class="confirm-panel">
     <h2 id="lo-title">Log out?</h2>
-    <p class="confirm-desc" id="lo-desc">You'll need to log in again to manage bookings.</p>
+    <p class="confirm-desc" id="lo-desc">You'll need to log in again to manage bookings. This will also clear all dashboard data stored on this device.</p>
     <p class="confirm-err" id="lo-err" role="alert" hidden>Could not log out. Check your connection and try again.</p>
     <div class="confirm-actions">
       <button class="btn-primary ghost" type="button" id="lo-cancel">Cancel</button>
@@ -420,58 +431,45 @@ dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-fi
   </div>
 </dialog>
 
+<!-- NEW BOOKING (opened from the top bar, uploads straight to Firebase) -->
+<dialog class="confirm" id="booking-dialog" aria-labelledby="nb-title">
+  <div class="confirm-panel">
+    <h2 id="nb-title">New booking</h2>
+    <p class="confirm-desc">Saved straight to the live schedule.</p>
+    <p class="confirm-err" id="nb-err" role="alert" hidden>Could not save the booking. Check your connection and try again.</p>
+    <form id="nb-form">
+      <div class="field">
+        <label for="nb-time">Time</label>
+        <input id="nb-time" type="text" placeholder="2:00 PM" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="nb-court">Court</label>
+        <input id="nb-court" type="text" placeholder="Court 1" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="nb-who">Player</label>
+        <input id="nb-who" type="text" placeholder="Player name" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="nb-status">Status</label>
+        <select id="nb-status">
+          <option value="confirmed">Confirmed</option>
+          <option value="pending" selected>Pending</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="confirm-actions">
+        <button class="btn-primary ghost" type="button" id="nb-cancel">Cancel</button>
+        <button class="btn-primary" type="submit" id="nb-save">Save booking</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
 <script>
 document.getElementById('today').textContent = new Date().toLocaleDateString(undefined, {
   weekday: 'long', month: 'long', day: 'numeric',
 });
-
-const stats = [
-  { num: '18', label: "Bookings today", delta: '+4 vs. yesterday', dir: 'up' },
-  { num: '236', label: 'Active members', delta: '+9 this month', dir: 'up' },
-  { num: '5 / 7', label: 'Courts in play now', delta: '2 open', dir: 'down' },
-  { num: '$1,240', label: 'Revenue this month', delta: '+12%', dir: 'up' },
-];
-document.getElementById('stats').innerHTML = stats.map(s => `
-  <div class="stat">
-    <div class="num">${s.num}</div>
-    <div class="label">${s.label}</div>
-    <div class="delta ${s.dir}">${s.delta}</div>
-  </div>
-`).join('');
-
-const courts = [
-  { name: 'Court 1', status: 'In play · ends 3:30', state: 'in-play' },
-  { name: 'Court 2', status: 'In play · ends 4:00', state: 'in-play' },
-  { name: 'Court 3', status: 'Available', state: 'available' },
-  { name: 'Court 4', status: 'In play · ends 3:15', state: 'in-play' },
-  { name: 'Court 5', status: 'Available', state: 'available' },
-  { name: 'Court 6', status: 'In play · ends 4:15', state: 'in-play' },
-  { name: 'Court 7', status: 'Under maintenance', state: 'maintenance' },
-];
-document.getElementById('courts').innerHTML = courts.map(c => `
-  <div class="court-tile ${c.state}">
-    <div class="name">${c.name}</div>
-    <div class="status">${c.status}</div>
-  </div>
-`).join('');
-
-const bookings = [
-  { time: '2:00 PM', court: 'Court 1', who: 'Maria Santos', status: 'confirmed' },
-  { time: '2:30 PM', court: 'Court 4', who: 'James Ong', status: 'confirmed' },
-  { time: '3:00 PM', court: 'Court 3', who: 'Leah Fernandez', status: 'pending' },
-  { time: '3:30 PM', court: 'Court 6', who: 'Ricardo Cruz', status: 'confirmed' },
-  { time: '4:00 PM', court: 'Court 2', who: 'Ana Villanueva', status: 'cancelled' },
-  { time: '4:30 PM', court: 'Court 1', who: 'Diego Reyes', status: 'pending' },
-  { time: '5:00 PM', court: 'Court 5', who: 'Sofia Lim', status: 'confirmed' },
-];
-document.getElementById('bookings').innerHTML = bookings.map(b => `
-  <tr>
-    <td data-label="Time">${b.time}</td>
-    <td data-label="Court">${b.court}</td>
-    <td data-label="Player">${b.who}</td>
-    <td data-label="Status"><span class="badge ${b.status}">${b.status}</span></td>
-  </tr>
-`).join('');
 
 /* Sidebar drawer (tablet and mobile) */
 (function () {
@@ -512,7 +510,7 @@ document.getElementById('bookings').innerHTML = bookings.map(b => `
 })();
 </script>
 
-<!-- Logout: same Firebase project and session as the public site -->
+<!-- Firebase: live dashboard data (fetch) + new-booking writes (upload) + logout with a full local wipe -->
 <script type="module">
 const firebaseConfig = {
   apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
@@ -527,24 +525,159 @@ const firebaseConfig = {
 const FIREBASE_VERSION = '11.10.0';
 const HINT_KEY = 'tcc-signed-in';   // the "signed in" hint the public site keeps
 const AFTER_LOGOUT_URL = './auth.html';   // where to go after logging out
+const base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/';
 
 let fb = null;
 const fbReady = (async () => {
   try {
-    const base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/';
-    const [appM, authM] = await Promise.all([
+    const [appM, authM, dbM] = await Promise.all([
       import(base + 'firebase-app.js'),
-      import(base + 'firebase-auth.js')
+      import(base + 'firebase-auth.js'),
+      import(base + 'firebase-database.js'),
     ]);
     const app = appM.initializeApp(firebaseConfig);
     const auth = authM.initializeAuth(app, {
       persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.browserSessionPersistence]
     });
-    fb = { authM, auth };
+    const db = dbM.getDatabase(app);
+    fb = { appM, authM, dbM, app, auth, db };
   } catch (err) {
     console.error('Firebase failed to load', err);
   }
 })();
+
+/* ---------- Helpers to render each section ---------- */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function renderStats(val) {
+  const el = document.getElementById('stats');
+  const entries = val ? Object.values(val) : [];
+  if (!entries.length) { el.innerHTML = '<p class="empty-note">No stats yet.</p>'; return; }
+  el.innerHTML = entries.map(s => `
+    <div class="stat">
+      <div class="num">${escapeHtml(s.num)}</div>
+      <div class="label">${escapeHtml(s.label)}</div>
+      ${s.delta ? `<div class="delta ${s.dir === 'down' ? 'down' : 'up'}">${escapeHtml(s.delta)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderCourts(val) {
+  const el = document.getElementById('courts');
+  const entries = val ? Object.values(val) : [];
+  document.getElementById('courts-sub').textContent = entries.length ? 'Updated live' : 'No courts yet';
+  if (!entries.length) { el.innerHTML = '<p class="empty-note">No courts configured yet.</p>'; return; }
+  el.innerHTML = entries.map(c => `
+    <div class="court-tile ${escapeHtml(c.state || 'available')}">
+      <div class="name">${escapeHtml(c.name)}</div>
+      <div class="status">${escapeHtml(c.status)}</div>
+    </div>
+  `).join('');
+}
+
+function renderBookings(val) {
+  const el = document.getElementById('bookings');
+  const entries = val ? Object.entries(val) : [];
+  document.getElementById('bookings-sub').textContent = entries.length ? `${entries.length} total` : 'No bookings yet';
+  if (!entries.length) {
+    el.innerHTML = '<tr><td colspan="4" class="empty-note">No bookings for today yet.</td></tr>';
+    return;
+  }
+  // Push keys sort chronologically, so this keeps them in the order they were made.
+  entries.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  el.innerHTML = entries.map(([, b]) => `
+    <tr>
+      <td data-label="Time">${escapeHtml(b.time)}</td>
+      <td data-label="Court">${escapeHtml(b.court)}</td>
+      <td data-label="Player">${escapeHtml(b.who)}</td>
+      <td data-label="Status"><span class="badge ${escapeHtml(b.status)}">${escapeHtml(b.status)}</span></td>
+    </tr>
+  `).join('');
+}
+
+/* ---------- Wire up live listeners once Firebase is ready ---------- */
+(async () => {
+  await fbReady;
+  if (!fb) {
+    document.getElementById('stats').innerHTML = '<p class="empty-note">Couldn\u2019t connect to the live data.</p>';
+    return;
+  }
+  const { dbM, db } = fb;
+  dbM.onValue(dbM.ref(db, 'dashboard/stats'), snap => renderStats(snap.val()), () => {
+    document.getElementById('stats').innerHTML = '<p class="empty-note">Couldn\u2019t load stats right now.</p>';
+  });
+  dbM.onValue(dbM.ref(db, 'dashboard/courts'), snap => renderCourts(snap.val()), () => {
+    document.getElementById('courts').innerHTML = '<p class="empty-note">Couldn\u2019t load courts right now.</p>';
+  });
+  dbM.onValue(
+    dbM.query(dbM.ref(db, 'dashboard/bookings'), dbM.orderByKey(), dbM.limitToLast(50)),
+    snap => renderBookings(snap.val()),
+    () => { document.getElementById('bookings').innerHTML = '<tr><td colspan="4" class="empty-note">Couldn\u2019t load bookings right now.</td></tr>'; }
+  );
+})();
+
+/* ---------- New booking: writes straight to Firebase ---------- */
+const bookingDlg = document.getElementById('booking-dialog');
+const nbForm = document.getElementById('nb-form');
+const nbSave = document.getElementById('nb-save');
+const nbCancel = document.getElementById('nb-cancel');
+const nbErr = document.getElementById('nb-err');
+
+document.getElementById('new-booking-btn').addEventListener('click', () => {
+  nbErr.hidden = true;
+  nbForm.reset();
+  bookingDlg.showModal();
+  document.getElementById('nb-time').focus({ preventScroll: true });
+});
+nbCancel.addEventListener('click', () => bookingDlg.close());
+bookingDlg.addEventListener('click', e => { if (e.target === bookingDlg) bookingDlg.close(); });
+
+nbForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  nbErr.hidden = true;
+  nbSave.disabled = true;
+  try {
+    await fbReady;
+    if (!fb) throw new Error('Firebase unavailable');
+    const { dbM, db } = fb;
+    await dbM.push(dbM.ref(db, 'dashboard/bookings'), {
+      time: document.getElementById('nb-time').value.trim(),
+      court: document.getElementById('nb-court').value.trim(),
+      who: document.getElementById('nb-who').value.trim(),
+      status: document.getElementById('nb-status').value,
+      createdAt: dbM.serverTimestamp(),
+    });
+    bookingDlg.close();
+  } catch (err) {
+    console.error(err);
+    nbErr.hidden = false;
+  } finally {
+    nbSave.disabled = false;
+  }
+});
+
+/* ---------- Logout: sign out and wipe everything stored on this device ---------- */
+async function clearAllLocalData() {
+  try { localStorage.clear(); } catch (e) {}
+  try { sessionStorage.clear(); } catch (e) {}
+  try {
+    if (window.indexedDB && indexedDB.databases) {
+      const dbs = await indexedDB.databases();
+      await Promise.all(dbs.map(d => d.name ? new Promise(res => {
+        const req = indexedDB.deleteDatabase(d.name);
+        req.onsuccess = req.onerror = req.onblocked = () => res();
+      }) : Promise.resolve()));
+    }
+  } catch (e) {}
+  if ('caches' in window) {
+    try {
+      const names = await caches.keys();
+      await Promise.all(names.map(n => caches.delete(n)));
+    } catch (e) {}
+  }
+}
 
 const dlg = document.getElementById('logout-dialog');
 const cancelBtn = document.getElementById('lo-cancel');
@@ -556,9 +689,10 @@ async function doLogout() {
   try {
     await fbReady;
     if (!fb) throw new Error('Firebase unavailable');
-    await fb.auth.authStateReady();
-    await fb.authM.signOut(fb.auth);
-    try { localStorage.removeItem(HINT_KEY); } catch (e) {}
+    const { authM, auth } = fb;
+    await auth.authStateReady();
+    await authM.signOut(auth);
+    await clearAllLocalData();
     location.assign(AFTER_LOGOUT_URL);   // buttons stay disabled while the page changes
   } catch (err) {
     console.error(err);
