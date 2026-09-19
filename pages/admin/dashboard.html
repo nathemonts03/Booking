@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Admin · Pickleball System</title>
+
+  <!-- Same light / dark choice as the main site (shares the tcc-theme setting) -->
+  <script>
+  (function () {
+    var root = document.documentElement;
+    function isDark() {
+      try {
+        var saved = localStorage.getItem('tcc-theme');
+        if (saved) return saved === 'dark';
+      } catch (e) {}
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    root.dataset.theme = isDark() ? 'dark' : 'light';
+    /* Follow a change made on the main site or in the device settings */
+    window.addEventListener('storage', function (e) { if (e.key === 'tcc-theme') root.dataset.theme = isDark() ? 'dark' : 'light'; });
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener && mq.addEventListener('change', function () { root.dataset.theme = isDark() ? 'dark' : 'light'; });
+    }
+  })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&display=swap" rel="stylesheet">
+  <style>
+/* ------------------------------------------------------------------
+   Tokens (same palette as the public site)
+   Court blue + kitchen teal come from the court itself; the optic
+   yellow ball is the only action colour.
+------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+  --bg: #F5F7F2;
+  --surface: #FFFFFF;
+  --ink: #10222B;
+  --ink-soft: #456069;
+  --line: rgba(16, 34, 43, .16);
+  --court: #2456C7;
+  --kitchen: #1B7F6E;
+  --band: #1F4DBA;
+  --idle: #5B6E76;
+  --ball: #F4D03F;
+  --on-ball: #10222B;
+  --focus: #2456C7;
+
+  --up: #1B7F6E;
+  --down: #B3261E;
+  --ok-bg: #E3F2EC;   --ok-ink: #1A6B45;
+  --warn-bg: #FBF1DC; --warn-ink: #8A6408;
+  --bad-bg: #FDECEB;  --bad-ink: #B3261E;
+
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A171D;
+  --surface: #11252D;
+  --ink: #EAF2EE;
+  --ink-soft: #9FB6BE;
+  --line: rgba(234, 242, 238, .16);
+  --court: #3B72E8;
+  --kitchen: #17786A;
+  --band: #1B3F94;
+  --idle: #3A5560;
+  --focus: #F4D03F;
+
+  --up: #4FD1B8;
+  --down: #FF8A80;
+  --ok-bg: rgba(79, 209, 184, .14);   --ok-ink: #6FE0C8;
+  --warn-bg: rgba(244, 208, 63, .14); --warn-ink: #F4D03F;
+  --bad-bg: rgba(255, 138, 128, .14); --bad-ink: #FF8A80;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 1rem/1.55 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+html:has(dialog[open]) { overflow: hidden; }
+h1, h2, h3 { font-family: var(--font-sans); font-stretch: 90%; letter-spacing: -.03em; margin: 0; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+
+.app { display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+
+/* ---------- Sidebar ---------- */
+/* Pinned top to bottom so it always fills the full height of the screen */
+.sidebar {
+  position: fixed; top: 0; bottom: 0; left: 0; width: 250px;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--band); color: #fff;
+  padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 28px;
+}
+/* faint court lines, like the band on the public site */
+.sidebar::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(86% - 1px), rgba(255,255,255,.16) calc(86% - 1px), rgba(255,255,255,.16) calc(86% + 1px), transparent calc(86% + 1px)),
+    linear-gradient(0deg, transparent calc(12% - 1px), rgba(255,255,255,.16) calc(12% - 1px), rgba(255,255,255,.16) calc(12% + 1px), transparent calc(12% + 1px));
+}
+.sidebar > * { position: relative; }
+.brand {
+  display: inline-flex; align-items: center; gap: .65rem;
+  color: #fff; text-decoration: none;
+  font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em;
+}
+.brand svg { width: 2.15rem; height: 2.15rem; flex: none; transition: transform .5s var(--ease-spring); }
+.brand:hover svg { transform: rotate(-12deg) scale(1.1); }
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav a {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .65rem .95rem; border-radius: 999px;
+  color: rgba(255,255,255,.82); text-decoration: none;
+  font-weight: 500; font-size: .97rem;
+  transition: background .2s ease, color .2s ease;
+}
+.nav a:hover { background: rgba(255,255,255,.12); color: #fff; }
+.nav a[aria-current="page"] { background: rgba(255,255,255,.18); color: #fff; font-weight: 600; }
+.nav .dot { width: .5rem; height: .5rem; border-radius: 50%; background: currentColor; opacity: .5; flex: none; }
+.nav a[aria-current="page"] .dot { background: var(--ball); opacity: 1; }
+.sidebar :focus-visible { outline-color: var(--ball); }
+.sidebar-bottom { margin-top: auto; display: grid; gap: 14px; }
+.sidebar-foot { margin: 0; font-size: .88rem; color: rgba(255,255,255,.72); line-height: 1.45; }
+
+/* Logout (very bottom of the sidebar) */
+.logout-btn {
+  display: flex; align-items: center; justify-content: center; gap: .6rem;
+  width: 100%; padding: .75rem 1rem; border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(255,255,255,.12); color: #fff;
+  font: 600 .97rem/1.1 var(--font-sans);
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.28);
+  transition: background .2s ease, box-shadow .2s ease, transform .25s var(--ease-spring);
+}
+.logout-btn:hover { background: rgba(255,255,255,.2); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.6); }
+.logout-btn:active { transform: scale(.97); }
+.logout-btn svg { width: 1.2rem; height: 1.2rem; flex: none; }
+
+/* Drawer controls (only shown on tablet and mobile, see the media query below) */
+.sidebar .sidebar-close {
+  position: absolute; top: calc(18px + env(safe-area-inset-top)); right: 16px;
+  display: none; place-items: center; width: 2.4rem; height: 2.4rem; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.35);
+  transition: transform .35s var(--ease-spring), box-shadow .2s ease;
+}
+.sidebar .sidebar-close:hover { transform: rotate(90deg); box-shadow: inset 0 0 0 1.5px #fff; }
+.sidebar .sidebar-close svg { width: 1.1rem; height: 1.1rem; }
+
+.mobilebar {
+  display: none; position: sticky; top: 0; z-index: 50;
+  align-items: center; gap: .75rem;
+  min-height: calc(3.5rem + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(18px, env(safe-area-inset-right)) 0 max(18px, env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.mobilebar .brand { color: var(--ink); }
+.menu-btn {
+  width: 2.6rem; height: 2.6rem; flex: none; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: box-shadow .2s ease, transform .25s var(--ease-spring);
+}
+.menu-btn:hover { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.menu-btn:active { transform: scale(.88); }
+.menu-btn svg { width: 1.3rem; height: 1.3rem; }
+
+.scrim {
+  display: none; position: fixed; inset: 0; z-index: 65;
+  background: rgba(6, 16, 22, .58);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+  opacity: 0; visibility: hidden;
+  transition: opacity .3s ease, visibility 0s linear .3s;
+}
+html.nav-open .scrim { opacity: 1; visibility: visible; transition: opacity .3s ease, visibility 0s; }
+
+/* ---------- Main ---------- */
+/* Column 2 on desktop: the sidebar is fixed, so it no longer takes up a grid cell */
+.main { grid-column: 2; width: min(1180px, 100%); margin-inline: auto; padding: 32px 40px 60px; }
+.topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; flex-wrap: wrap; }
+.topbar h1 { font-size: clamp(2rem, 3.4vw, 2.7rem); font-weight: 700; font-stretch: 88%; line-height: 1; letter-spacing: -.035em; }
+.topbar p { margin: 6px 0 0; color: var(--ink-soft); }
+
+.btn-primary {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 2.9rem; padding: 0 1.5rem; border: 0; border-radius: 999px;
+  background: var(--ball); color: var(--on-ball);
+  font: 700 1rem/1.1 var(--font-sans); cursor: pointer;
+  transition: transform .25s var(--ease-spring), box-shadow .25s ease;
+}
+.btn-primary::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.6) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+.btn-primary:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 14px 26px -14px rgba(0,0,0,.6); }
+.btn-primary:hover::after { transform: translateX(130%); transition: transform .7s var(--ease-out); }
+.btn-primary:active { transform: translateY(0) scale(.98); }
+
+/* ---------- Stats ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 20px 22px; }
+.stat .num { font-size: 2.3rem; font-weight: 700; font-stretch: 88%; line-height: 1; letter-spacing: -.035em; }
+.stat .label { color: var(--ink-soft); font-size: .92rem; margin-top: 6px; }
+.stat .delta { font-size: .85rem; margin-top: 10px; font-weight: 600; }
+.delta.up { color: var(--up); }
+.delta.down { color: var(--down); }
+
+/* ---------- Section shell ---------- */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px 26px; margin-bottom: 24px; }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 18px; }
+.panel-head h2 { font-size: 1.5rem; font-weight: 700; font-stretch: 90%; }
+.panel-head .sub { color: var(--ink-soft); font-size: .9rem; }
+
+/* ---------- Court board ---------- */
+.courts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.court-tile {
+  border-radius: 16px; padding: 14px 16px 16px; color: #fff; position: relative; overflow: hidden;
+  min-height: 100px; display: flex; flex-direction: column; justify-content: space-between;
+}
+.court-tile::after {
+  content: ""; position: absolute; left: 10%; right: 10%; top: 50%; height: 2px;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.6) 0 6px, transparent 6px 10px);
+}
+.court-tile .name { font-size: 1.2rem; font-weight: 700; font-stretch: 90%; line-height: 1; letter-spacing: -.02em; position: relative; z-index: 1; }
+.court-tile .status { font-size: .85rem; font-weight: 600; position: relative; z-index: 1; }
+.court-tile.available { background: var(--court); }
+.court-tile.in-play { background: var(--kitchen); }
+.court-tile.maintenance { background: var(--idle); }
+
+/* ---------- Bookings table ---------- */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: .82rem; color: var(--ink-soft); font-weight: 600; padding: 0 10px 10px; border-bottom: 1px solid var(--line); }
+td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: .97rem; }
+tr:last-child td { border-bottom: 0; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.badge::first-letter { text-transform: uppercase; }
+.badge.confirmed { background: var(--ok-bg); color: var(--ok-ink); }
+.badge.pending { background: var(--warn-bg); color: var(--warn-ink); }
+.badge.cancelled { background: var(--bad-bg); color: var(--bad-ink); }
+.who { color: var(--ink-soft); font-size: .85rem; }
+
+@media (max-width: 980px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1023px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .main { grid-column: 1; }
+  html.nav-open { overflow: hidden; }
+  .mobilebar { display: flex; }
+  .scrim { display: block; }
+  .sidebar .sidebar-close { display: grid; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 70;
+    height: auto; width: min(300px, 86vw);
+    padding-top: calc(24px + env(safe-area-inset-top));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    transform: translateX(-102%); visibility: hidden;
+    transition: transform .35s var(--ease-out), visibility 0s linear .35s;
+  }
+  html.nav-open .sidebar {
+    transform: none; visibility: visible;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .6);
+    transition: transform .35s var(--ease-out), visibility 0s;
+  }
+}
+@media (max-width: 760px) {
+  .main { padding: 24px 18px 48px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .panel { padding: 20px 18px; }
+  table, thead, tbody, th, td, tr { display: block; }
+  thead { display: none; }
+  tr { border-bottom: 1px solid var(--line); padding: 10px 0; }
+  tr:last-child { border-bottom: 0; }
+  td { border: 0; padding: 3px 0; }
+  td::before { content: attr(data-label); display: inline-block; width: 90px; color: var(--ink-soft); font-size: .8rem; }
+}
+
+/* ---------- Logout confirmation ---------- */
+.btn-primary:disabled { opacity: .65; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+.btn-primary.ghost::after { display: none; }
+.btn-primary.ghost:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--ink); }
+dialog.confirm {
+  width: min(26rem, calc(100% - 1.5rem)); padding: 0; border: 0;
+  background: transparent; color: var(--ink); overflow: visible;
+}
+dialog.confirm::backdrop { background: rgba(6, 16, 22, .58); -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px); }
+.confirm-panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 28px;
+  padding: 1.75rem 1.5rem 1.5rem; box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .7);
+}
+.confirm-panel h2 { font-size: 1.8rem; font-weight: 700; font-stretch: 88%; line-height: 1.05; margin-bottom: .5rem; }
+.confirm-desc { margin: 0 0 1.4rem; color: var(--ink-soft); }
+.confirm-err { margin: -.6rem 0 1rem; color: var(--down); font-weight: 500; font-size: .95rem; }
+.confirm-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.confirm-actions .btn-primary { width: 100%; height: 3rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  dialog.confirm[open]::backdrop { animation: fade-in .3s ease both; }
+  dialog.confirm[open] .confirm-panel { animation: pop-in .55s var(--ease-spring) backwards; }
+}
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(36px) scale(.9); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+  </style>
+</head>
+<body>
+
+<!-- Shared logo mark (same as the public site) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="mark" viewBox="0 0 48 48">
+    <rect width="48" height="48" rx="12" fill="#2456C7"/>
+    <g fill="none" stroke="#fff" stroke-width="2">
+      <rect x="8" y="14" width="32" height="20"/>
+      <path d="M16 14v20M32 14v20M8 24h8M32 24h8"/>
+      <path d="M24 12v24" stroke-opacity=".7"/>
+    </g>
+    <circle cx="35" cy="19" r="4.4" fill="#F4D03F"/>
+  </symbol>
+</svg>
+
+<!-- Top bar with the menu button (tablet and mobile only) -->
+<header class="mobilebar">
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <a class="brand" href="/dashboard">
+    <svg aria-hidden="true"><use href="#mark"/></svg>
+    <span>Pickleball&nbsp;Admin</span>
+  </a>
+</header>
+<div class="scrim" id="scrim" aria-hidden="true"></div>
+
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="/dashboard">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      <span>Pickleball&nbsp;Admin</span>
+    </a>
+    <button class="sidebar-close" id="sidebar-close" type="button" aria-label="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <nav class="nav" aria-label="Admin">
+      <a href="#" aria-current="page"><span class="dot"></span>Dashboard</a>
+      <a href="#"><span class="dot"></span>Bookings</a>
+      <a href="#"><span class="dot"></span>Members</a>
+      <a href="#"><span class="dot"></span>Courts</a>
+      <a href="#"><span class="dot"></span>Settings</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <p class="sidebar-foot">Signed in as club admin.<br>Changes here affect all members.</p>
+      <button class="logout-btn" id="logout-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        <span>Log out</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="greeting">Good afternoon</h1>
+        <p id="today"></p>
+      </div>
+      <button class="btn-primary" type="button">New booking</button>
+    </div>
+
+    <section class="stats" id="stats" aria-label="Overview"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Courts right now</h2>
+        <span class="sub">Updated live</span>
+      </div>
+      <div class="courts-grid" id="courts"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Today's bookings</h2>
+        <span class="sub">7 total</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Court</th><th>Player</th><th>Status</th></tr>
+        </thead>
+        <tbody id="bookings"></tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+<!-- LOGOUT CONFIRMATION (opened from the sidebar) -->
+<dialog class="confirm" id="logout-dialog" aria-labelledby="lo-title" aria-describedby="lo-desc">
+  <div class="confirm-panel">
+    <h2 id="lo-title">Log out?</h2>
+    <p class="confirm-desc" id="lo-desc">You'll need to log in again to manage bookings.</p>
+    <p class="confirm-err" id="lo-err" role="alert" hidden>Could not log out. Check your connection and try again.</p>
+    <div class="confirm-actions">
+      <button class="btn-primary ghost" type="button" id="lo-cancel">Cancel</button>
+      <button class="btn-primary" type="button" id="lo-confirm">Log out</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+document.getElementById('today').textContent = new Date().toLocaleDateString(undefined, {
+  weekday: 'long', month: 'long', day: 'numeric',
+});
+
+const stats = [
+  { num: '18', label: "Bookings today", delta: '+4 vs. yesterday', dir: 'up' },
+  { num: '236', label: 'Active members', delta: '+9 this month', dir: 'up' },
+  { num: '5 / 7', label: 'Courts in play now', delta: '2 open', dir: 'down' },
+  { num: '$1,240', label: 'Revenue this month', delta: '+12%', dir: 'up' },
+];
+document.getElementById('stats').innerHTML = stats.map(s => `
+  <div class="stat">
+    <div class="num">${s.num}</div>
+    <div class="label">${s.label}</div>
+    <div class="delta ${s.dir}">${s.delta}</div>
+  </div>
+`).join('');
+
+const courts = [
+  { name: 'Court 1', status: 'In play · ends 3:30', state: 'in-play' },
+  { name: 'Court 2', status: 'In play · ends 4:00', state: 'in-play' },
+  { name: 'Court 3', status: 'Available', state: 'available' },
+  { name: 'Court 4', status: 'In play · ends 3:15', state: 'in-play' },
+  { name: 'Court 5', status: 'Available', state: 'available' },
+  { name: 'Court 6', status: 'In play · ends 4:15', state: 'in-play' },
+  { name: 'Court 7', status: 'Under maintenance', state: 'maintenance' },
+];
+document.getElementById('courts').innerHTML = courts.map(c => `
+  <div class="court-tile ${c.state}">
+    <div class="name">${c.name}</div>
+    <div class="status">${c.status}</div>
+  </div>
+`).join('');
+
+const bookings = [
+  { time: '2:00 PM', court: 'Court 1', who: 'Maria Santos', status: 'confirmed' },
+  { time: '2:30 PM', court: 'Court 4', who: 'James Ong', status: 'confirmed' },
+  { time: '3:00 PM', court: 'Court 3', who: 'Leah Fernandez', status: 'pending' },
+  { time: '3:30 PM', court: 'Court 6', who: 'Ricardo Cruz', status: 'confirmed' },
+  { time: '4:00 PM', court: 'Court 2', who: 'Ana Villanueva', status: 'cancelled' },
+  { time: '4:30 PM', court: 'Court 1', who: 'Diego Reyes', status: 'pending' },
+  { time: '5:00 PM', court: 'Court 5', who: 'Sofia Lim', status: 'confirmed' },
+];
+document.getElementById('bookings').innerHTML = bookings.map(b => `
+  <tr>
+    <td data-label="Time">${b.time}</td>
+    <td data-label="Court">${b.court}</td>
+    <td data-label="Player">${b.who}</td>
+    <td data-label="Status"><span class="badge ${b.status}">${b.status}</span></td>
+  </tr>
+`).join('');
+
+/* Sidebar drawer (tablet and mobile) */
+(function () {
+  const root = document.documentElement;
+  const sidebar = document.getElementById('sidebar');
+  const openBtn = document.getElementById('menu-btn');
+  const closeBtn = document.getElementById('sidebar-close');
+  const scrim = document.getElementById('scrim');
+  const desktop = window.matchMedia('(min-width: 1024px)');
+
+  const isOpen = () => root.classList.contains('nav-open');
+  function setOpen(on, restoreFocus) {
+    root.classList.toggle('nav-open', on);
+    openBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+    if (on) closeBtn.focus({ preventScroll: true });
+    else if (restoreFocus) openBtn.focus({ preventScroll: true });
+  }
+
+  openBtn.addEventListener('click', () => setOpen(true));
+  closeBtn.addEventListener('click', () => setOpen(false, true));
+  scrim.addEventListener('click', () => setOpen(false, true));
+  sidebar.querySelectorAll('.nav a').forEach(a => a.addEventListener('click', () => { if (isOpen()) setOpen(false); }));
+
+  /* Esc closes the drawer; Tab stays inside it while it is open */
+  document.addEventListener('keydown', e => {
+    if (!isOpen() || document.querySelector('dialog[open]')) return;
+    if (e.key === 'Escape') { e.preventDefault(); setOpen(false, true); return; }
+    if (e.key !== 'Tab') return;
+    const items = sidebar.querySelectorAll('a[href], button:not([disabled])');
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  /* Growing to a desktop-size window: the sidebar is always visible, so reset */
+  const onResize = e => { if (e.matches) setOpen(false); };
+  desktop.addEventListener ? desktop.addEventListener('change', onResize) : desktop.addListener(onResize);
+})();
+</script>
+
+<!-- Logout: same Firebase project and session as the public site -->
+<script type="module">
+const firebaseConfig = {
+  apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
+  authDomain: "pickleballsystem-729d3.firebaseapp.com",
+  databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pickleballsystem-729d3",
+  storageBucket: "pickleballsystem-729d3.firebasestorage.app",
+  messagingSenderId: "352709442404",
+  appId: "1:352709442404:web:5bb00d7a77036c55d61871",
+  measurementId: "G-QBWPK4B56G"
+};
+const FIREBASE_VERSION = '11.10.0';
+const HINT_KEY = 'tcc-signed-in';   // the "signed in" hint the public site keeps
+const AFTER_LOGOUT_URL = './auth.html';   // where to go after logging out
+
+let fb = null;
+const fbReady = (async () => {
+  try {
+    const base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/';
+    const [appM, authM] = await Promise.all([
+      import(base + 'firebase-app.js'),
+      import(base + 'firebase-auth.js')
+    ]);
+    const app = appM.initializeApp(firebaseConfig);
+    const auth = authM.initializeAuth(app, {
+      persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.browserSessionPersistence]
+    });
+    fb = { authM, auth };
+  } catch (err) {
+    console.error('Firebase failed to load', err);
+  }
+})();
+
+const dlg = document.getElementById('logout-dialog');
+const cancelBtn = document.getElementById('lo-cancel');
+const confirmBtn = document.getElementById('lo-confirm');
+const errEl = document.getElementById('lo-err');
+
+async function doLogout() {
+  confirmBtn.disabled = true; cancelBtn.disabled = true; errEl.hidden = true;
+  try {
+    await fbReady;
+    if (!fb) throw new Error('Firebase unavailable');
+    await fb.auth.authStateReady();
+    await fb.authM.signOut(fb.auth);
+    try { localStorage.removeItem(HINT_KEY); } catch (e) {}
+    location.assign(AFTER_LOGOUT_URL);   // buttons stay disabled while the page changes
+  } catch (err) {
+    console.error(err);
+    errEl.hidden = false;
+    confirmBtn.disabled = false; cancelBtn.disabled = false;
+  }
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  errEl.hidden = true;
+  confirmBtn.disabled = false; cancelBtn.disabled = false;
+  if (typeof dlg.showModal !== 'function') { doLogout(); return; }
+  dlg.showModal();
+  cancelBtn.focus({ preventScroll: true });
+});
+cancelBtn.addEventListener('click', () => dlg.close());
+confirmBtn.addEventListener('click', doLogout);
+dlg.addEventListener('click', e => { if (e.target === dlg && !confirmBtn.disabled) dlg.close(); });   // click outside
+</script>
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <title>Admin log in · Pickleball System</title>
+
+        <!-- Same light / dark choice as the main site and the dashboard (shares the tcc-theme setting) -->
+        <script>
+  (function () {
+    var root = document.documentElement;
+    function isDark() {
+      try {
+        var saved = localStorage.getItem('tcc-theme');
+        if (saved) return saved === 'dark';
+      } catch (e) {}
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    root.dataset.theme = isDark() ? 'dark' : 'light';
+    window.addEventListener('storage', function (e) { if (e.key === 'tcc-theme') root.dataset.theme = isDark() ? 'dark' : 'light'; });
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      mq.addEventListener && mq.addEventListener('change', function () { root.dataset.theme = isDark() ? 'dark' : 'light'; });
+    }
+  })();
+  </script>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&display=swap"
+            rel="stylesheet">
+        <style>
+/* ------------------------------------------------------------------
+   Tokens (same palette as the public site and the admin dashboard)
+------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+  --bg: #F5F7F2;
+  --surface: #FFFFFF;
+  --ink: #10222B;
+  --ink-soft: #456069;
+  --line: rgba(16, 34, 43, .16);
+  --court: #2456C7;
+  --band: #1F4DBA;
+  --ball: #F4D03F;
+  --on-ball: #10222B;
+  --focus: #2456C7;
+  --down: #B3261E;
+  --bad-bg: #FDECEB;
+
+  --ease-out: cubic-bezier(.2, .8, .2, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0A171D;
+  --surface: #11252D;
+  --ink: #EAF2EE;
+  --ink-soft: #9FB6BE;
+  --line: rgba(234, 242, 238, .16);
+  --court: #3B72E8;
+  --band: #1B3F94;
+  --focus: #F4D03F;
+  --down: #FF8A80;
+  --bad-bg: rgba(255, 138, 128, .14);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 1rem/1.55 var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+h1, h2 { font-family: var(--font-sans); font-stretch: 90%; letter-spacing: -.03em; margin: 0; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 6px; }
+
+.page {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  min-height: 100vh; min-height: 100dvh;
+}
+
+/* ---------- Entrance: one staggered sequence when the page opens ---------- */
+@keyframes aside-in { from { opacity: 0; transform: translateX(-4%); } }
+@keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+.rise {
+  animation: rise .7s var(--ease-out) backwards;
+  animation-delay: calc(.2s + var(--i, 0) * 70ms);
+}
+
+/* ---------- Blue band (same look as the dashboard sidebar) ---------- */
+.aside {
+  position: relative; overflow: hidden;
+  background: var(--band); color: #fff;
+  padding: calc(32px + env(safe-area-inset-top)) 40px calc(32px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 28px;
+  animation: aside-in .8s var(--ease-out) backwards;
+}
+.aside::before, .handoff::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent calc(86% - 1px), rgba(255,255,255,.16) calc(86% - 1px), rgba(255,255,255,.16) calc(86% + 1px), transparent calc(86% + 1px)),
+    linear-gradient(0deg, transparent calc(12% - 1px), rgba(255,255,255,.16) calc(12% - 1px), rgba(255,255,255,.16) calc(12% + 1px), transparent calc(12% + 1px));
+}
+.aside > * { position: relative; }
+.aside :focus-visible { outline-color: var(--ball); }
+.brand {
+  display: inline-flex; align-items: center; gap: .65rem; align-self: flex-start;
+  color: #fff; text-decoration: none;
+  font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em;
+}
+.brand svg { width: 2.15rem; height: 2.15rem; flex: none; transition: transform .5s var(--ease-spring); }
+.brand:hover svg { transform: rotate(-12deg) scale(1.1); }
+.aside-copy { max-width: 26rem; margin-top: 8vh; }
+.aside-copy h2 { font-size: clamp(2rem, 3.6vw, 3rem); font-weight: 700; font-stretch: 86%; line-height: 1.02; letter-spacing: -.035em; }
+.aside-copy p { margin: 14px 0 0; color: rgba(255,255,255,.8); max-width: 22rem; }
+
+/* Court drawing: the lines draw themselves, then the ball drops and bounces */
+.court-art { margin-top: auto; width: min(100%, 26rem); height: auto; }
+.court-art .lines, .court-art .park { transition: transform .7s var(--ease-out); }
+.court-art .lines { transform: translate(calc(var(--bx, 0px) * -.35), calc(var(--by, 0px) * -.35)); }
+.court-art .park { transform: translate(var(--bx, 0px), var(--by, 0px)); }
+.court-art .ln { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.3s var(--ease-out) .55s forwards; }
+.court-art .ball-drop { animation: drop 1.1s linear 1.15s backwards; }
+.court-art .ball-hop { transform-box: fill-box; transform-origin: center; }
+.aside.hop .ball-hop { animation: hop .6s var(--ease-out); }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes drop {
+  0%   { transform: translateY(-90px); opacity: 0; animation-timing-function: cubic-bezier(.5, 0, 1, .6); }
+  35%  { transform: translateY(0); opacity: 1;     animation-timing-function: cubic-bezier(0, .4, .5, 1); }
+  58%  { transform: translateY(-26px);             animation-timing-function: cubic-bezier(.5, 0, 1, .6); }
+  76%  { transform: translateY(0);                 animation-timing-function: cubic-bezier(0, .4, .5, 1); }
+  88%  { transform: translateY(-8px);              animation-timing-function: cubic-bezier(.5, 0, 1, .6); }
+  100% { transform: translateY(0); }
+}
+@keyframes hop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
+  70% { transform: translateY(0); }
+  85% { transform: translateY(-4px); }
+}
+
+/* ---------- Form side ---------- */
+.panel-wrap {
+  display: grid; place-items: center;
+  padding: calc(32px + env(safe-area-inset-top)) 28px calc(32px + env(safe-area-inset-bottom));
+}
+.card { width: min(26rem, 100%); }
+.card h1 { font-size: clamp(2.1rem, 3.6vw, 2.8rem); font-weight: 700; font-stretch: 88%; line-height: 1; letter-spacing: -.035em; }
+.card .lead { margin: 10px 0 28px; color: var(--ink-soft); }
+
+.error {
+  margin: 0 0 18px; padding: 12px 16px; border-radius: 14px;
+  background: var(--bad-bg); color: var(--down); font-weight: 500; font-size: .95rem;
+}
+.error[hidden] { display: none; }
+.error.pop { animation: err-in .45s var(--ease-spring); }
+@keyframes err-in { from { opacity: 0; transform: translateY(-10px) scale(.97); } }
+
+form.shake { animation: shake .45s var(--ease-out); }
+@keyframes shake {
+  20% { transform: translateX(-9px); }
+  40% { transform: translateX(7px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(3px); }
+}
+
+.field { display: grid; gap: 7px; margin-bottom: 18px; }
+.field label { font-weight: 600; font-size: .92rem; transition: color .2s ease; }
+.field:focus-within label { color: var(--focus); }
+.control { position: relative; }
+.control input {
+  width: 100%; height: 3.1rem; padding: 0 1.1rem 0 2.9rem;
+  border: 0; border-radius: 14px; background: var(--surface); color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  font: 400 1rem/1.2 var(--font-sans);
+  transition: box-shadow .25s var(--ease-out);
+}
+.control input::placeholder { color: var(--ink-soft); opacity: .7; }
+.control input:hover { box-shadow: inset 0 0 0 1.5px var(--ink-soft); }
+.control input:focus,
+.control input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus), 0 0 0 5px color-mix(in srgb, var(--focus) 22%, transparent);
+}
+.control input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px var(--down); }
+.control input[aria-invalid="true"]:focus {
+  box-shadow: inset 0 0 0 2px var(--down), 0 0 0 5px color-mix(in srgb, var(--down) 22%, transparent);
+}
+.control.has-toggle input { padding-right: 3.4rem; }
+.lead-icon {
+  position: absolute; left: 1rem; top: 50%; width: 1.2rem; height: 1.2rem; margin-top: -.6rem;
+  color: var(--ink-soft); pointer-events: none;
+  transition: color .2s ease, transform .35s var(--ease-spring);
+}
+.control:focus-within .lead-icon { color: var(--focus); transform: scale(1.12); }
+
+.toggle {
+  position: absolute; top: 50%; right: .45rem; transform: translateY(-50%);
+  width: 2.3rem; height: 2.3rem; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; color: var(--ink-soft); cursor: pointer;
+  transition: color .2s ease, background .2s ease, transform .25s var(--ease-spring);
+}
+.toggle:hover { color: var(--ink); background: var(--line); }
+.toggle:active { transform: translateY(-50%) scale(.88); }
+.toggle svg { grid-area: 1 / 1; width: 1.25rem; height: 1.25rem; transition: opacity .2s ease, transform .35s var(--ease-spring); }
+.toggle .eye-off { opacity: 0; transform: scale(.5) rotate(-40deg); }
+.toggle[aria-pressed="true"] .eye { opacity: 0; transform: scale(.5) rotate(40deg); }
+.toggle[aria-pressed="true"] .eye-off { opacity: 1; transform: none; }
+
+.btn-primary {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: inline-flex; align-items: center; justify-content: center; gap: .65rem;
+  width: 100%; height: 3.1rem; padding: 0 1.5rem; border: 0; border-radius: 999px;
+  background: var(--ball); color: var(--on-ball);
+  font: 700 1rem/1.1 var(--font-sans); cursor: pointer;
+  margin-top: 6px;
+  transition: transform .25s var(--ease-spring), box-shadow .25s ease, opacity .25s ease;
+}
+.btn-primary::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.6) 50%, transparent 68%);
+  transform: translateX(-130%);
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-2px) scale(1.01); box-shadow: 0 14px 26px -14px rgba(0,0,0,.6); }
+.btn-primary:hover:not(:disabled)::after { transform: translateX(130%); transition: transform .7s var(--ease-out); }
+.btn-primary:active:not(:disabled) { transform: translateY(0) scale(.98); }
+.btn-primary:disabled { opacity: .65; cursor: not-allowed; }
+.btn-primary.is-loading:disabled { opacity: 1; cursor: progress; }
+.spinner {
+  display: none; flex: none; width: 1.1rem; height: 1.1rem;
+  border: 2.5px solid currentColor; border-right-color: transparent; border-radius: 50%;
+}
+.is-loading .spinner { display: block; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.back {
+  display: inline-block; margin-top: 26px; color: var(--ink-soft);
+  font-weight: 500; font-size: .95rem; text-decoration: none;
+  border-bottom: 1.5px solid var(--line); transition: color .2s ease, border-color .2s ease;
+}
+.back:hover { color: var(--ink); border-color: var(--ink); }
+
+/* ---------- Success hand-off: the blue band grows from the button and covers the page ---------- */
+.handoff {
+  position: fixed; inset: 0; z-index: 100; overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--band); color: #fff;
+  visibility: hidden; pointer-events: none;
+  clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
+}
+.handoff.on {
+  visibility: visible; pointer-events: auto;
+  clip-path: circle(150% at var(--x, 50%) var(--y, 50%));
+  transition: clip-path .8s var(--ease-out), visibility 0s;
+}
+.handoff-inner { position: relative; display: grid; justify-items: center; text-align: center; padding: 24px; }
+.handoff-mark { width: 4.5rem; height: 4.5rem; margin-bottom: 22px; }
+.handoff h2 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 700; font-stretch: 86%; line-height: 1.02; letter-spacing: -.035em; }
+.handoff p { margin: 10px 0 0; color: rgba(255,255,255,.82); }
+.progress { position: relative; width: min(16rem, 70vw); height: 6px; margin-top: 30px; border-radius: 999px; background: rgba(255,255,255,.22); }
+.progress i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: inherit; background: #fff; }
+.progress i::after {
+  content: ""; position: absolute; right: -8px; top: 50%; width: 16px; height: 16px; margin-top: -8px;
+  border-radius: 50%; background: var(--ball); box-shadow: 0 0 0 3px var(--band);
+}
+.handoff.on .handoff-inner > * {
+  animation: rise .6s var(--ease-out) backwards;
+  animation-delay: calc(.3s + var(--i, 0) * 90ms);
+}
+.handoff.on .progress i { animation: fill calc(var(--dur, 1600ms) - 350ms) cubic-bezier(.45, .05, .25, 1) .35s forwards; }
+@keyframes fill { to { width: 100%; } }
+
+/* ---------- Tablet and mobile: the band shrinks to a slim header ---------- */
+@media (max-width: 880px) {
+  .page { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .aside { padding: calc(16px + env(safe-area-inset-top)) 20px 16px; }
+  .aside-copy, .court-art { display: none; }
+  .panel-wrap { place-items: start center; padding-top: 40px; }
+}
+
+/* Reduced motion: no movement, everything appears in its final state */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation-duration: .01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+  </style>
+    </head>
+    <body>
+
+        <!-- Shared logo mark (same as the public site) -->
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true"
+            focusable="false">
+            <symbol id="mark" viewBox="0 0 48 48">
+                <rect width="48" height="48" rx="12" fill="#2456C7" />
+                <g fill="none" stroke="#fff" stroke-width="2">
+                    <rect x="8" y="14" width="32" height="20" />
+                    <path d="M16 14v20M32 14v20M8 24h8M32 24h8" />
+                    <path d="M24 12v24" stroke-opacity=".7" />
+                </g>
+                <circle cx="35" cy="19" r="4.4" fill="#F4D03F" />
+            </symbol>
+        </svg>
+
+        <div class="page" id="page">
+
+            <aside class="aside" id="aside">
+                <a class="brand rise" style="--i:0" href="/">
+                    <svg aria-hidden="true"><use href="#mark" /></svg>
+                    <span>Pickleball&nbsp;Admin</span>
+                </a>
+                <div class="aside-copy">
+                    <h2 class="rise" style="--i:1">Manage bookings, members and
+                        courts.</h2>
+                    <p class="rise" style="--i:2">Log in with your club admin
+                        account to open the dashboard.</p>
+                </div>
+                <svg class="court-art" viewBox="0 0 320 190" fill="none"
+                    aria-hidden="true">
+                    <g class="lines" stroke="#fff" stroke-width="2.5">
+                        <rect class="ln" pathLength="1" x="6" y="20" width="308"
+                            height="160" rx="4" stroke-opacity=".45" />
+                        <path class="ln" pathLength="1" d="M6 100h308"
+                            stroke-opacity=".45" />
+                        <path class="ln" pathLength="1" d="M6 62h308M6 138h308"
+                            stroke-opacity=".3" />
+                        <path class="ln" pathLength="1"
+                            d="M160 20v42M160 138v42" stroke-opacity=".3" />
+                    </g>
+                    <g class="park">
+                        <g class="ball-drop">
+                            <circle class="ball-hop" cx="238" cy="52" r="10"
+                                fill="#F4D03F" />
+                        </g>
+                    </g>
+                </svg>
+            </aside>
+
+            <main class="panel-wrap">
+                <div class="card">
+                    <h1 class="rise" style="--i:0">Admin log in</h1>
+                    <p class="lead rise" style="--i:1">Only club admin accounts
+                        can open the dashboard.</p>
+
+                    <p class="error" id="error" role="alert" hidden></p>
+
+                    <form id="login-form" novalidate>
+                        <div class="field rise" style="--i:2">
+                            <label for="email">Email</label>
+                            <div class="control">
+                                <svg class="lead-icon" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"><rect x="3" y="5"
+                                        width="18" height="14" rx="3" /><path
+                                        d="M3.5 7.5l8.5 6 8.5-6" /></svg>
+                                <input id="email" name="email" type="email"
+                                    inputmode="email" autocomplete="username"
+                                    autocapitalize="none" spellcheck="false"
+                                    placeholder="you@example.com" required>
+                            </div>
+                        </div>
+
+                        <div class="field rise" style="--i:3">
+                            <label for="password">Password</label>
+                            <div class="control has-toggle">
+                                <svg class="lead-icon" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"><rect x="4" y="10.5"
+                                        width="16" height="10" rx="3" /><path
+                                        d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg>
+                                <input id="password" name="password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    placeholder="Your password" required>
+                                <button class="toggle" id="toggle-pw"
+                                    type="button" aria-pressed="false"
+                                    aria-label="Show password">
+                                    <svg class="eye" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"><path
+                                            d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle
+                                            cx="12" cy="12" r="3" /></svg>
+                                    <svg class="eye-off" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        aria-hidden="true"><path
+                                            d="M17.9 17.9A10.6 10.6 0 0 1 12 19c-6.4 0-10-7-10-7a17.7 17.7 0 0 1 4.1-4.9M9.9 5.2A9.7 9.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.2 3.2M1 1l22 22" /><path
+                                            d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary rise" style="--i:4"
+                            id="submit" type="submit">
+                            <span class="spinner" aria-hidden="true"></span>
+                            <span id="submit-label">Log in</span>
+                        </button>
+                    </form>
+
+                    <a class="back rise" style="--i:5" href="/">Back to the
+                        site</a>
+                </div>
+            </main>
+        </div>
+
+        <!-- Shown after a successful login while the dashboard opens -->
+        <div class="handoff" id="handoff" role="status" aria-live="polite"
+            aria-hidden="true">
+            <div class="handoff-inner">
+                <svg class="handoff-mark" style="--i:0" aria-hidden="true"><use
+                        href="#mark" /></svg>
+                <h2 id="handoff-title" style="--i:1"></h2>
+                <p id="handoff-sub" style="--i:2"></p>
+                <div class="progress" style="--i:3"
+                    aria-hidden="true"><i></i></div>
+            </div>
+        </div>
+
+        <script type="module">
+/* Same Firebase project and session as the public site and the dashboard */
+const firebaseConfig = {
+  apiKey: "AIzaSyBWeLeh0a2PpGpxHk8DFup-rNiFmfjvaWI",
+  authDomain: "pickleballsystem-729d3.firebaseapp.com",
+  databaseURL: "https://pickleballsystem-729d3-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pickleballsystem-729d3",
+  storageBucket: "pickleballsystem-729d3.firebasestorage.app",
+  messagingSenderId: "352709442404",
+  appId: "1:352709442404:web:5bb00d7a77036c55d61871",
+  measurementId: "G-QBWPK4B56G"
+};
+const FIREBASE_VERSION = '11.10.0';
+const AFTER_LOGIN_URL = './dashboard.html';   // where admins go after logging in (change this to your dashboard file)
+const USERS_PATH = 'customer_data';            // Realtime Database: customer_data/<uid>/role
+const ADMIN_ROLE = 'admin';
+const HANDOFF_MS = 1600;                       // how long the "Welcome back" screen plays before the dashboard opens
+
+let fb = null;
+const fbReady = (async () => {
+  try {
+    const base = 'https://www.gstatic.com/firebasejs/' + FIREBASE_VERSION + '/';
+    const [appM, authM, dbM] = await Promise.all([
+      import(base + 'firebase-app.js'),
+      import(base + 'firebase-auth.js'),
+      import(base + 'firebase-database.js')
+    ]);
+    const app = appM.initializeApp(firebaseConfig);
+    const auth = authM.initializeAuth(app, {
+      persistence: [authM.indexedDBLocalPersistence, authM.browserLocalPersistence, authM.browserSessionPersistence]
+    });
+    const db = dbM.getDatabase(app);
+    fb = { authM, dbM, auth, db };
+  } catch (err) {
+    console.error('Firebase failed to load', err);
+  }
+})();
+
+const pageEl = document.getElementById('page');
+const asideEl = document.getElementById('aside');
+const form = document.getElementById('login-form');
+const emailEl = document.getElementById('email');
+const pwEl = document.getElementById('password');
+const submitBtn = document.getElementById('submit');
+const submitLabel = document.getElementById('submit-label');
+const errEl = document.getElementById('error');
+const toggleBtn = document.getElementById('toggle-pw');
+const handoff = document.getElementById('handoff');
+const handoffTitle = document.getElementById('handoff-title');
+const handoffSub = document.getElementById('handoff-sub');
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Restart a CSS animation that is triggered by a class */
+function replay(el, cls) {
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+}
+
+function showError(msg, field) {
+  errEl.textContent = msg;
+  errEl.hidden = false;
+  replay(errEl, 'pop');
+  replay(form, 'shake');
+  emailEl.removeAttribute('aria-invalid');
+  pwEl.removeAttribute('aria-invalid');
+  if (field) field.setAttribute('aria-invalid', 'true');
+}
+function clearError() {
+  errEl.hidden = true;
+  emailEl.removeAttribute('aria-invalid');
+  pwEl.removeAttribute('aria-invalid');
+}
+function setBusy(on) {
+  submitBtn.disabled = on;
+  submitBtn.classList.toggle('is-loading', on);
+  submitBtn.setAttribute('aria-busy', on ? 'true' : 'false');
+  submitLabel.textContent = on ? 'Logging in…' : 'Log in';
+  emailEl.readOnly = on;
+  pwEl.readOnly = on;
+}
+
+function messageFor(err) {
+  switch (err && err.code) {
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.';
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Email or password is incorrect.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Wait a few minutes, then try again.';
+    case 'auth/network-request-failed':
+      return 'Could not reach the server. Check your connection and try again.';
+    case 'PERMISSION_DENIED':
+    case 'permission-denied':
+      return 'Could not check your account. Please contact the club owner.';
+    case 'app/load-failed':
+      return 'Could not load the login service. Check your connection and reload the page.';
+    default:
+      return 'Could not log in. Please try again.';
+  }
+}
+
+/* Reads the profile at customer_data/<uid> from the Realtime Database (null if there is none) */
+async function getProfile(uid) {
+  const snap = await fb.dbM.get(fb.dbM.ref(fb.db, USERS_PATH + '/' + uid));
+  return snap.exists() ? snap.val() : null;
+}
+/* Ignores stray spaces and capital letters, e.g. "Admin " still counts */
+const isAdmin = p => !!p && typeof p.role === 'string' && p.role.trim().toLowerCase() === ADMIN_ROLE;
+
+/* Success: grow the blue "Welcome back" screen out of the button, then open the dashboard */
+async function goToDashboard(fromEl, replaceHistory) {
+  const dur = prefersReducedMotion() ? 500 : HANDOFF_MS;
+  const r = fromEl ? fromEl.getBoundingClientRect() : null;
+  handoff.style.setProperty('--x', r ? (r.left + r.width / 2) + 'px' : '50%');
+  handoff.style.setProperty('--y', r ? (r.top + r.height / 2) + 'px' : '50%');
+  handoff.style.setProperty('--dur', dur + 'ms');
+  handoffTitle.textContent = 'Welcome back';
+  handoffSub.textContent = 'Opening your dashboard…';
+  handoff.setAttribute('aria-hidden', 'false');
+  pageEl.inert = true;
+
+  /* Warm up the dashboard while the animation plays */
+  const hint = document.createElement('link');
+  hint.rel = 'prefetch';
+  hint.href = AFTER_LOGIN_URL;
+  document.head.appendChild(hint);
+
+  handoff.classList.add('on');
+  await wait(dur);
+  if (replaceHistory) location.replace(AFTER_LOGIN_URL);
+  else location.assign(AFTER_LOGIN_URL);
+}
+
+/* Coming back with the browser's back button: show the form again */
+window.addEventListener('pageshow', e => {
+  if (!e.persisted) return;
+  handoff.classList.remove('on');
+  handoff.setAttribute('aria-hidden', 'true');
+  pageEl.inert = false;
+  setBusy(false);
+});
+
+/* Show / hide password */
+toggleBtn.addEventListener('click', () => {
+  const show = pwEl.type === 'password';
+  pwEl.type = show ? 'text' : 'password';
+  toggleBtn.setAttribute('aria-pressed', show ? 'true' : 'false');
+  toggleBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+});
+
+emailEl.addEventListener('input', clearError);
+pwEl.addEventListener('input', clearError);
+
+/* The tennis ball hops whenever a field gets focus */
+form.addEventListener('focusin', e => {
+  if (e.target.matches('input')) replay(asideEl, 'hop');
+});
+
+/* The ball and court lines drift slightly with the pointer (mouse only, off for reduced motion) */
+if (window.matchMedia('(hover: hover) and (pointer: fine)').matches && !prefersReducedMotion()) {
+  let frame = 0;
+  window.addEventListener('pointermove', e => {
+    if (frame) return;
+    const x = e.clientX, y = e.clientY;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      asideEl.style.setProperty('--bx', ((x / window.innerWidth - .5) * 22).toFixed(1) + 'px');
+      asideEl.style.setProperty('--by', ((y / window.innerHeight - .5) * 16).toFixed(1) + 'px');
+    });
+  }, { passive: true });
+}
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  clearError();
+
+  const email = emailEl.value.trim();
+  const password = pwEl.value;
+  if (!email) { showError('Enter your email address.', emailEl); emailEl.focus(); return; }
+  if (!password) { showError('Enter your password.', pwEl); pwEl.focus(); return; }
+
+  setBusy(true);
+  let signedIn = false;
+  try {
+    await fbReady;
+    if (!fb) throw { code: 'app/load-failed' };
+
+    const cred = await fb.authM.signInWithEmailAndPassword(fb.auth, email, password);
+    signedIn = true;
+
+    const uid = cred.user.uid;
+    const profile = await getProfile(uid);
+    if (!isAdmin(profile)) {
+      console.warn('Admin check failed', { uid, profile });
+      await fb.authM.signOut(fb.auth);
+      showError(!profile
+        ? 'No profile found for this login (ID ' + uid + '). It must match a key under ' + USERS_PATH + ' in the database.'
+        : "This account doesn't have admin access (role: " + (profile.role === undefined ? 'none' : JSON.stringify(profile.role)) + ').');
+      setBusy(false);
+      return;
+    }
+
+    await goToDashboard(submitBtn, false);   // the button stays in its loading state while the page changes
+  } catch (err) {
+    console.error(err);
+    /* Logged in but the role check failed: don't leave a half-finished session behind */
+    if (signedIn) { try { await fb.authM.signOut(fb.auth); } catch (e2) {} }
+    showError(messageFor(err), (err && err.code === 'auth/invalid-email') ? emailEl : null);
+    setBusy(false);
+  }
+});
+
+/* Already logged in as an admin (for example from an earlier visit)? Skip the form. */
+(async () => {
+  await fbReady;
+  if (!fb) { showError(messageFor({ code: 'app/load-failed' })); return; }
+  try {
+    await fb.auth.authStateReady();
+    const user = fb.auth.currentUser;
+    if (user && isAdmin(await getProfile(user.uid))) await goToDashboard(null, true);
+  } catch (err) {
+    console.error(err);
+  }
+})();
+</script>
+    </body>
+</html>
